@@ -570,6 +570,36 @@ HRESULT WINAPI CorBindToRuntimeEx(LPWSTR szVersion, LPWSTR szBuildFlavor, DWORD 
     return ret;
 }
 
+HRESULT WINAPI CorBindToRuntime(LPCWSTR version, LPCWSTR flavor, REFCLSID rclsid, REFIID riid, LPVOID *ppv)
+{
+    TRACE("%s %s %s %s %p\n", debugstr_w(version), debugstr_w(flavor), debugstr_guid(rclsid),
+          debugstr_guid(riid), ppv);
+
+    return CorBindToRuntimeEx((LPWSTR)version, (LPWSTR)flavor, 0, rclsid, riid, ppv);
+}
+
+HRESULT WINAPI MetaDataGetDispenser(REFCLSID rclsid, REFIID riid, LPVOID *ppv)
+{
+    IUnknown *unk;
+    HRESULT hr;
+
+    TRACE("%s %s %p\n", debugstr_guid(rclsid), debugstr_guid(riid), ppv);
+
+    if (!ppv) return E_POINTER;
+    *ppv = NULL;
+
+    if (!IsEqualGUID(rclsid, &CLSID_CorMetaDataDispenser) &&
+        !IsEqualGUID(rclsid, &CLSID_CorMetaDataDispenserRuntime))
+        return CLASS_E_CLASSNOTAVAILABLE;
+
+    hr = MetaDataDispenser_CreateInstance(&unk);
+    if (FAILED(hr)) return hr;
+
+    hr = IUnknown_QueryInterface(unk, riid, ppv);
+    IUnknown_Release(unk);
+    return hr;
+}
+
 HRESULT WINAPI CorBindToCurrentRuntime(LPCWSTR filename, REFCLSID rclsid, REFIID riid, LPVOID *ppv)
 {
     HRESULT ret;

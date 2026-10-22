@@ -16,7 +16,7 @@
 @ stub CoUninitializeEE
 @ stub CollectCtrs
 @ stdcall CorBindToCurrentRuntime(wstr ptr ptr ptr)
-@ stub CorBindToRuntime
+@ stdcall CorBindToRuntime(wstr wstr ptr ptr ptr)
 @ stub CorBindToRuntimeByCfg
 @ stub CorBindToRuntimeByPath
 @ stub CorBindToRuntimeByPathEx
@@ -73,7 +73,7 @@
 @ stub LoadLibraryWithPolicyShim
 @ stdcall LoadStringRCEx(long long ptr long long ptr)
 @ stdcall LockClrVersion(ptr ptr ptr)
-@ stub MetaDataGetDispenser
+@ stdcall MetaDataGetDispenser(ptr ptr ptr)
 @ stdcall ND_CopyObjDst(ptr ptr long long)
 @ stdcall ND_CopyObjSrc(ptr long ptr long)
 @ stdcall ND_RI2(ptr long)
