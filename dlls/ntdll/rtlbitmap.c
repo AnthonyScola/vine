@@ -709,6 +709,29 @@ ULONG WINAPI RtlFindNextForwardRunClear(PCRTL_BITMAP lpBits, ULONG ulStart, PULO
   return ulSize;
 }
 
+/* finds the run of bits equal to 'set' that ends closest to ulStart, at or below it */
+static ULONG find_last_backward_run(PCRTL_BITMAP lpBits, ULONG ulStart, PULONG lpPos, BOOLEAN set)
+{
+  ULONG end, i;
+
+  if (!lpBits || !lpPos || ulStart >= lpBits->SizeOfBitMap)
+    return 0;
+
+  i = ulStart;
+  while (((lpBits->Buffer[i >> 5] >> (i & 31)) & 1) != set)
+  {
+    if (!i) return 0;
+    i--;
+  }
+
+  end = i;
+  while (i && ((lpBits->Buffer[(i - 1) >> 5] >> ((i - 1) & 31)) & 1) == set)
+    i--;
+
+  *lpPos = i;
+  return end - i + 1;
+}
+
 /*************************************************************************
  * RtlFindLastBackwardRunSet	[NTDLL.@]
  *
@@ -726,8 +749,9 @@ ULONG WINAPI RtlFindNextForwardRunClear(PCRTL_BITMAP lpBits, ULONG ulStart, PULO
  */
 ULONG WINAPI RtlFindLastBackwardRunSet(PCRTL_BITMAP lpBits, ULONG ulStart, PULONG lpPos)
 {
-  FIXME("(%p,%lu,%p)-stub!\n", lpBits, ulStart, lpPos);
-  return 0;
+  TRACE("(%p,%lu,%p)\n", lpBits, ulStart, lpPos);
+
+  return find_last_backward_run(lpBits, ulStart, lpPos, TRUE);
 }
 
 /*************************************************************************
@@ -747,8 +771,9 @@ ULONG WINAPI RtlFindLastBackwardRunSet(PCRTL_BITMAP lpBits, ULONG ulStart, PULON
  */
 ULONG WINAPI RtlFindLastBackwardRunClear(PCRTL_BITMAP lpBits, ULONG ulStart, PULONG lpPos)
 {
-  FIXME("(%p,%lu,%p)-stub!\n", lpBits, ulStart, lpPos);
-  return 0;
+  TRACE("(%p,%lu,%p)\n", lpBits, ulStart, lpPos);
+
+  return find_last_backward_run(lpBits, ulStart, lpPos, FALSE);
 }
 
 /*************************************************************************

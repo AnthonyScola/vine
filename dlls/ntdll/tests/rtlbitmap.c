@@ -660,6 +660,50 @@ static void test_RtlFindNextForwardRunClear(void)
   ok(lpPos == 56, "Invalid position of found clear run: %ld, expected 56\n", lpPos);
 }
 
+static void test_RtlFindLastBackwardRun(void)
+{
+  ULONG (WINAPI *pRtlFindLastBackwardRunSet)(PRTL_BITMAP,ULONG,PULONG);
+  ULONG (WINAPI *pRtlFindLastBackwardRunClear)(PRTL_BITMAP,ULONG,PULONG);
+  ULONG mask[2] = { 0x000000f0, 0x00000000 }; /* bits 4-7 set */
+  ULONG count, pos;
+
+  pRtlFindLastBackwardRunSet = (void *)GetProcAddress(hntdll, "RtlFindLastBackwardRunSet");
+  pRtlFindLastBackwardRunClear = (void *)GetProcAddress(hntdll, "RtlFindLastBackwardRunClear");
+  if (!pRtlFindLastBackwardRunSet || !pRtlFindLastBackwardRunClear)
+  {
+    win_skip("RtlFindLastBackwardRun functions not available\n");
+    return;
+  }
+
+  pRtlInitializeBitMap(&bm, (BYTE *)mask, 62);
+
+  pos = 0xdeadbeef;
+  count = pRtlFindLastBackwardRunSet(&bm, 61, &pos);
+  ok(count == 4, "got count %lu\n", count);
+  ok(pos == 4, "got pos %lu\n", pos);
+
+  pos = 0xdeadbeef;
+  count = pRtlFindLastBackwardRunSet(&bm, 5, &pos);
+  ok(count == 2, "got count %lu\n", count);
+  ok(pos == 4, "got pos %lu\n", pos);
+
+  count = pRtlFindLastBackwardRunSet(&bm, 3, &pos);
+  ok(count == 0, "got count %lu\n", count);
+
+  pos = 0xdeadbeef;
+  count = pRtlFindLastBackwardRunClear(&bm, 61, &pos);
+  ok(count == 54, "got count %lu\n", count);
+  ok(pos == 8, "got pos %lu\n", pos);
+
+  pos = 0xdeadbeef;
+  count = pRtlFindLastBackwardRunClear(&bm, 6, &pos);
+  ok(count == 4, "got count %lu\n", count);
+  ok(pos == 0, "got pos %lu\n", pos);
+
+  count = pRtlFindLastBackwardRunClear(&bm, 62, &pos);
+  ok(count == 0, "got count %lu\n", count);
+}
+
 #endif
 
 START_TEST(rtlbitmap)
@@ -687,6 +731,7 @@ START_TEST(rtlbitmap)
     test_RtlFindClearRuns();
     test_RtlFindNextForwardRunSet();
     test_RtlFindNextForwardRunClear();
+    test_RtlFindLastBackwardRun();
   }
 #endif
 }
