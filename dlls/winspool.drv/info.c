@@ -1869,12 +1869,20 @@ LONG WINAPI DocumentPropertiesW(HWND hWnd, HANDLE hPrinter,
  */
 BOOL WINAPI IsValidDevmodeA(PDEVMODEA pDevMode, SIZE_T size)
 {
-    FIXME("(%p,%Id): stub\n", pDevMode, size);
+    const DWORD fields_off = FIELD_OFFSET(DEVMODEA, dmFields) + sizeof(pDevMode->dmFields);
+    DEVMODEW *dmW;
+    BOOL ret;
 
-    if(!pDevMode)
-        return FALSE;
+    TRACE("(%p,%Iu)\n", pDevMode, size);
 
-    return TRUE;
+    if (!pDevMode || size < fields_off) return FALSE;
+    if (pDevMode->dmSize < fields_off || size < pDevMode->dmSize + pDevMode->dmDriverExtra) return FALSE;
+
+    /* the W version checks the fields, which only differ in the string sizes */
+    if (!(dmW = GdiConvertToDevmodeW( pDevMode ))) return FALSE;
+    ret = IsValidDevmodeW( dmW, dmW->dmSize + dmW->dmDriverExtra );
+    HeapFree( GetProcessHeap(), 0, dmW );
+    return ret;
 }
 
 /*****************************************************************************
@@ -2335,13 +2343,61 @@ BOOL WINAPI WritePrinter(HANDLE printer, void *buf, DWORD size, DWORD *written)
     return backend->fpWritePrinter(handle, buf, size, written);
 }
 
+/* converts a FORM_INFO_1A or FORM_INFO_2A to its W equivalent; free with free_form_info_W */
+static BOOL form_info_AtoW( DWORD level, const BYTE *formA, FORM_INFO_2W *formW, UNICODE_STRING *strings )
+{
+    const FORM_INFO_2A *f = (const FORM_INFO_2A *)formA;
+
+    memset( formW, 0, sizeof(*formW) );
+    memset( strings, 0, 3 * sizeof(*strings) );
+    if (level != 1 && level != 2)
+    {
+        SetLastError( ERROR_INVALID_LEVEL );
+        return FALSE;
+    }
+    if (!formA)
+    {
+        SetLastError( ERROR_INVALID_PARAMETER );
+        return FALSE;
+    }
+    formW->Flags = f->Flags;
+    formW->pName = asciitounicode( &strings[0], f->pName );
+    formW->Size = f->Size;
+    formW->ImageableArea = f->ImageableArea;
+    if (level == 2)
+    {
+        formW->pKeyword = f->pKeyword;
+        formW->StringType = f->StringType;
+        formW->pMuiDll = asciitounicode( &strings[1], f->pMuiDll );
+        formW->dwResourceId = f->dwResourceId;
+        formW->pDisplayName = asciitounicode( &strings[2], f->pDisplayName );
+        formW->wLangId = f->wLangId;
+    }
+    return TRUE;
+}
+
+static void free_form_info_W( UNICODE_STRING *strings )
+{
+    RtlFreeUnicodeString( &strings[0] );
+    RtlFreeUnicodeString( &strings[1] );
+    RtlFreeUnicodeString( &strings[2] );
+}
+
 /*****************************************************************************
  *          AddFormA  [WINSPOOL.@]
  */
 BOOL WINAPI AddFormA(HANDLE hPrinter, DWORD Level, LPBYTE pForm)
 {
-    FIXME("(%p,%ld,%p): stub\n", hPrinter, Level, pForm);
-    return TRUE;
+    UNICODE_STRING strings[3];
+    FORM_INFO_2W formW;
+    BOOL ret;
+
+    TRACE("(%p,%ld,%p)\n", hPrinter, Level, pForm);
+
+    if (!form_info_AtoW( Level, pForm, &formW, strings )) return FALSE;
+    ret = AddFormW( hPrinter, Level, (BYTE *)&formW );
+    free_form_info_W( strings );
+    return ret;
 }
 
 /*****************************************************************************
@@ -2792,8 +2848,16 @@ BOOL WINAPI ClosePrinter(HANDLE hPrinter)
  */
 BOOL WINAPI DeleteFormA(HANDLE hPrinter, LPSTR pFormName)
 {
-    FIXME("(%p,%s): stub\n", hPrinter, pFormName);
-    return TRUE;
+    UNICODE_STRING nameU;
+    WCHAR *nameW;
+    BOOL ret;
+
+    TRACE("(%p,%s)\n", hPrinter, debugstr_a(pFormName));
+
+    nameW = asciitounicode( &nameU, pFormName );
+    ret = DeleteFormW( hPrinter, nameW );
+    RtlFreeUnicodeString( &nameU );
+    return ret;
 }
 
 /*****************************************************************************
@@ -3225,8 +3289,19 @@ BOOL WINAPI GetFormW( HANDLE printer, WCHAR *name, DWORD level, BYTE *form, DWOR
 BOOL WINAPI SetFormA(HANDLE hPrinter, LPSTR pFormName, DWORD Level,
                         LPBYTE pForm)
 {
-    FIXME("(%p,%s,%ld,%p): stub\n",hPrinter,pFormName,Level,pForm);
-    return FALSE;
+    UNICODE_STRING strings[3], nameU;
+    FORM_INFO_2W formW;
+    WCHAR *nameW;
+    BOOL ret;
+
+    TRACE("(%p,%s,%ld,%p)\n", hPrinter, debugstr_a(pFormName), Level, pForm);
+
+    if (!form_info_AtoW( Level, pForm, &formW, strings )) return FALSE;
+    nameW = asciitounicode( &nameU, pFormName );
+    ret = SetFormW( hPrinter, nameW, Level, (BYTE *)&formW );
+    RtlFreeUnicodeString( &nameU );
+    free_form_info_W( strings );
+    return ret;
 }
 
 /*****************************************************************************
@@ -3270,8 +3345,21 @@ BOOL WINAPI ReadPrinter(HANDLE printer, void *buf, DWORD size, DWORD *bytes_read
  */
 BOOL WINAPI ResetPrinterA(HANDLE hPrinter, LPPRINTER_DEFAULTSA pDefault)
 {
-    FIXME("(%p, %p): stub\n", hPrinter, pDefault);
-    return FALSE;
+    PRINTER_DEFAULTSW defaultsW;
+    UNICODE_STRING datatypeU;
+    BOOL ret;
+
+    TRACE("(%p, %p)\n", hPrinter, pDefault);
+
+    if (!pDefault) return ResetPrinterW( hPrinter, NULL );
+
+    defaultsW.pDatatype = asciitounicode( &datatypeU, pDefault->pDatatype );
+    defaultsW.pDevMode = pDefault->pDevMode ? GdiConvertToDevmodeW( pDefault->pDevMode ) : NULL;
+    defaultsW.DesiredAccess = pDefault->DesiredAccess;
+    ret = ResetPrinterW( hPrinter, &defaultsW );
+    RtlFreeUnicodeString( &datatypeU );
+    HeapFree( GetProcessHeap(), 0, defaultsW.pDevMode );
+    return ret;
 }
 
 /*****************************************************************************
