@@ -1331,6 +1331,18 @@ BOOL WINAPI SnmpExtensionInit(DWORD dwUptimeReference,
     return TRUE;
 }
 
+/*****************************************************************************
+ * SnmpExtensionInitEx [INETMIB1.@]
+ *
+ * All supported objects are reported as a single region by SnmpExtensionInit,
+ * so there are never additional regions.
+ */
+BOOL WINAPI SnmpExtensionInitEx(AsnObjectIdentifier *pNextSupportedRegion)
+{
+    TRACE("(%p)\n", pNextSupportedRegion);
+    return FALSE;
+}
+
 static void cleanup(void)
 {
     UINT i;
