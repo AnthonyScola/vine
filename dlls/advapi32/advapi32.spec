@@ -474,7 +474,7 @@
 @ stdcall LsaLookupPrivilegeName(long ptr ptr)
 # @ stub LsaLookupPrivilegeValue
 @ stdcall LsaLookupSids(ptr long ptr ptr ptr)
-# @ stub LsaLookupSids2
+@ stdcall LsaLookupSids2(ptr long long ptr ptr ptr)
 # @ stub LsaManageSidNameMapping
 @ stdcall LsaNtStatusToWinError(long)
 @ stub LsaOpenAccount
@@ -519,7 +519,7 @@
 # @ stub MSChapSrvChangePassword
 # @ stub MSChapSrvChangePassword2
 @ stdcall -import MakeAbsoluteSD(ptr ptr ptr ptr ptr ptr ptr ptr ptr ptr ptr)
-# @ stub MakeAbsoluteSD2
+@ stdcall -import MakeAbsoluteSD2(ptr ptr)
 @ stdcall -import MakeSelfRelativeSD(ptr ptr ptr)
 @ stdcall -import MapGenericMask(ptr ptr)
 @ stdcall NotifyBootConfigStatus(long)
@@ -637,7 +637,7 @@
 @ stdcall -import RegDeleteValueA(long str)
 @ stdcall -import RegDeleteValueW(long wstr)
 @ stdcall RegDisablePredefinedCache()
-# @ stub RegDisablePredefinedCacheEx
+@ stdcall -import RegDisablePredefinedCacheEx()
 @ stdcall RegDisableReflectionKey(ptr)
 @ stdcall RegEnableReflectionKey(ptr)
 @ stdcall RegEnumKeyA(long long ptr long)

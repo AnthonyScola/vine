@@ -389,10 +389,40 @@ NTSTATUS WINAPI LsaLookupNames(
     OUT PLSA_REFERENCED_DOMAIN_LIST* ReferencedDomains,
     OUT PLSA_TRANSLATED_SID* Sids)
 {
-    FIXME("(%p,0x%08lx,%p,%p,%p) stub\n", PolicyHandle, Count, Names,
-          ReferencedDomains, Sids);
+    LSA_TRANSLATED_SID2 *sids2;
+    NTSTATUS status;
+    ULONG i;
 
-    return STATUS_NONE_MAPPED;
+    TRACE("(%p,0x%08lx,%p,%p,%p)\n", PolicyHandle, Count, Names, ReferencedDomains, Sids);
+
+    status = LsaLookupNames2( PolicyHandle, 0, Count, Names, ReferencedDomains, &sids2 );
+    if (status != STATUS_SUCCESS && status != STATUS_SOME_NOT_MAPPED && status != STATUS_NONE_MAPPED)
+        return status;
+
+    if (!(*Sids = malloc( Count * sizeof(**Sids) )))
+    {
+        LsaFreeMemory( sids2 );
+        LsaFreeMemory( *ReferencedDomains );
+        *ReferencedDomains = NULL;
+        return STATUS_NO_MEMORY;
+    }
+
+    for (i = 0; i < Count; i++)
+    {
+        SID *sid = sids2[i].Sid;
+
+        (*Sids)[i].Use = sids2[i].Use;
+        (*Sids)[i].DomainIndex = sids2[i].DomainIndex;
+        /* the RID is the last subauthority of the account's SID; domains have none */
+        if (sid && sid->SubAuthorityCount && sids2[i].Use != SidTypeDomain &&
+            sids2[i].Use != SidTypeInvalid && sids2[i].Use != SidTypeUnknown)
+            (*Sids)[i].RelativeId = sid->SubAuthority[sid->SubAuthorityCount - 1];
+        else
+            (*Sids)[i].RelativeId = 0;
+    }
+
+    LsaFreeMemory( sids2 );
+    return status;
 }
 
 static BOOL lookup_name( LSA_UNICODE_STRING *name, SID *sid, DWORD *sid_size, WCHAR *domain,
@@ -545,6 +575,22 @@ NTSTATUS WINAPI LsaLookupNames2( LSA_HANDLE policy, ULONG flags, ULONG count,
     if (mapped == count) return STATUS_SUCCESS;
     if (mapped > 0 && mapped < count) return STATUS_SOME_NOT_MAPPED;
     return STATUS_NONE_MAPPED;
+}
+
+/******************************************************************************
+ * LsaLookupSids2 [ADVAPI32.@]
+ *
+ * Like LsaLookupSids, with lookup options that only matter for Internet SIDs.
+ */
+NTSTATUS WINAPI LsaLookupSids2( LSA_HANDLE policy, ULONG options, ULONG count, PSID *sids,
+                                LSA_REFERENCED_DOMAIN_LIST **domains, LSA_TRANSLATED_NAME **names )
+{
+    TRACE( "(%p, %#lx, %lu, %p, %p, %p)\n", policy, options, count, sids, domains, names );
+
+    if (options & ~(LSA_LOOKUP_DISALLOW_CONNECTED_ACCOUNT_INTERNET_SID | LSA_LOOKUP_PREFER_INTERNET_NAMES))
+        return STATUS_INVALID_PARAMETER;
+
+    return LsaLookupSids( policy, count, sids, domains, names );
 }
 
 /******************************************************************************

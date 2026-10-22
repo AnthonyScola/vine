@@ -45,6 +45,8 @@
 WINE_DEFAULT_DEBUG_CHANNEL(advapi);
 
 static DWORD trustee_to_sid(DWORD nDestinationSidLength, PSID pDestinationSid, PTRUSTEEW pTrustee);
+static DWORD trustee_name_A_to_W(TRUSTEE_FORM form, char *trustee_nameA, WCHAR **ptrustee_nameW);
+static void free_trustee_name(TRUSTEE_FORM form, WCHAR *trustee_nameW);
 
 typedef struct _MAX_SID
 {
@@ -285,10 +287,54 @@ GetEffectiveRightsFromAclW( PACL pacl, PTRUSTEEW pTrustee, PACCESS_MASK pAccessR
 	##############################################
 */
 
- /****************************************************************************** 
+static DWORD trustee_A_to_W( const TRUSTEEA *a, TRUSTEEW *w )
+{
+    memset( w, 0, sizeof(*w) );
+    w->pMultipleTrustee = NULL; /* currently not supported */
+    w->MultipleTrusteeOperation = a->MultipleTrusteeOperation;
+    w->TrusteeForm = a->TrusteeForm;
+    w->TrusteeType = a->TrusteeType;
+    return trustee_name_A_to_W( a->TrusteeForm, a->ptstrName, &w->ptstrName );
+}
+
+static void free_explicit_access_W( ULONG count, EXPLICIT_ACCESSW *w )
+{
+    ULONG i;
+
+    if (!w) return;
+    for (i = 0; i < count; i++) free_trustee_name( w[i].Trustee.TrusteeForm, w[i].Trustee.ptstrName );
+    free( w );
+}
+
+static DWORD explicit_access_A_to_W( ULONG count, const EXPLICIT_ACCESSA *a, EXPLICIT_ACCESSW **ret )
+{
+    EXPLICIT_ACCESSW *w;
+    DWORD err;
+    ULONG i;
+
+    *ret = NULL;
+    if (!count || !a) return ERROR_SUCCESS;
+    if (!(w = calloc( count, sizeof(*w) ))) return ERROR_NOT_ENOUGH_MEMORY;
+
+    for (i = 0; i < count; i++)
+    {
+        w[i].grfAccessPermissions = a[i].grfAccessPermissions;
+        w[i].grfAccessMode = a[i].grfAccessMode;
+        w[i].grfInheritance = a[i].grfInheritance;
+        if ((err = trustee_A_to_W( &a[i].Trustee, &w[i].Trustee )))
+        {
+            free_explicit_access_W( i, w );
+            return err;
+        }
+    }
+    *ret = w;
+    return ERROR_SUCCESS;
+}
+
+/******************************************************************************
  * BuildSecurityDescriptorA [ADVAPI32.@]
  *
- * Builds a SD from 
+ * Builds a SD from
  *
  * PARAMS
  *  pOwner                [I]
@@ -315,13 +361,40 @@ DWORD WINAPI BuildSecurityDescriptorA(
     IN PSECURITY_DESCRIPTOR pOldSD,
     IN OUT PULONG lpdwBufferLength,
     OUT PSECURITY_DESCRIPTOR* pNewSD)
-{ 
-    FIXME("(%p,%p,%ld,%p,%ld,%p,%p,%p,%p) stub!\n",pOwner,pGroup,
-          cCountOfAccessEntries,pListOfAccessEntries,cCountOfAuditEntries,
-          pListofAuditEntries,pOldSD,lpdwBufferLength,pNewSD);
- 
-    return ERROR_CALL_NOT_IMPLEMENTED;
-} 
+{
+    TRUSTEEW ownerW, groupW;
+    EXPLICIT_ACCESSW *accessW = NULL, *auditW = NULL;
+    BOOL have_owner = FALSE, have_group = FALSE;
+    DWORD ret;
+
+    TRACE("(%p,%p,%ld,%p,%ld,%p,%p,%p,%p)\n", pOwner, pGroup,
+          cCountOfAccessEntries, pListOfAccessEntries, cCountOfAuditEntries,
+          pListofAuditEntries, pOldSD, lpdwBufferLength, pNewSD);
+
+    if (pOwner)
+    {
+        if ((ret = trustee_A_to_W( pOwner, &ownerW ))) goto done;
+        have_owner = TRUE;
+    }
+    if (pGroup)
+    {
+        if ((ret = trustee_A_to_W( pGroup, &groupW ))) goto done;
+        have_group = TRUE;
+    }
+    if ((ret = explicit_access_A_to_W( cCountOfAccessEntries, pListOfAccessEntries, &accessW ))) goto done;
+    if ((ret = explicit_access_A_to_W( cCountOfAuditEntries, pListofAuditEntries, &auditW ))) goto done;
+
+    ret = BuildSecurityDescriptorW( have_owner ? &ownerW : NULL, have_group ? &groupW : NULL,
+                                    cCountOfAccessEntries, accessW, cCountOfAuditEntries, auditW,
+                                    pOldSD, lpdwBufferLength, pNewSD );
+
+done:
+    free_explicit_access_W( cCountOfAuditEntries, auditW );
+    free_explicit_access_W( cCountOfAccessEntries, accessW );
+    if (have_group) free_trustee_name( groupW.TrusteeForm, groupW.ptstrName );
+    if (have_owner) free_trustee_name( ownerW.TrusteeForm, ownerW.ptstrName );
+    return ret;
+}
  
 /******************************************************************************
  * BuildSecurityDescriptorW [ADVAPI32.@]
