@@ -75,6 +75,23 @@ DWORD WINAPI ConvertGuidToStringW( const GUID *guid, WCHAR *str, DWORD len )
     return ERROR_SUCCESS;
 }
 
+/******************************************************************
+ *    ConvertStringToGuidA (IPHLPAPI.@)
+ */
+DWORD WINAPI ConvertStringToGuidA( const char *str, GUID *guid )
+{
+    UNICODE_STRING ustr;
+    DWORD ret;
+
+    if (!RtlCreateUnicodeStringFromAsciiz( &ustr, str )) return ERROR_NOT_ENOUGH_MEMORY;
+    ret = RtlNtStatusToDosError( RtlGUIDFromString( &ustr, guid ) );
+    RtlFreeUnicodeString( &ustr );
+    return ret;
+}
+
+/******************************************************************
+ *    ConvertStringToGuidW (IPHLPAPI.@)
+ */
 DWORD WINAPI ConvertStringToGuidW( const WCHAR *str, GUID *guid )
 {
     UNICODE_STRING ustr;
