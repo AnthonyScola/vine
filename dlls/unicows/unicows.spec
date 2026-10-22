@@ -232,7 +232,7 @@
 @ stdcall GetSaveFileNameW(ptr)
 @ stdcall GetShortPathNameW(wstr ptr long)
 @ stdcall GetStartupInfoW(ptr)
-@ stub GetStateTextW
+@ stdcall GetStateTextW(long ptr long) oleacc.GetStateTextW
 @ stdcall GetStringTypeExW(long long wstr long ptr)
 @ stdcall GetStringTypeW(long wstr long ptr)
 @ stdcall GetSystemDirectoryW(ptr long)
