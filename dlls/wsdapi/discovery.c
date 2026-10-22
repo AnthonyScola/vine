@@ -470,6 +470,18 @@ HRESULT WINAPI WSDCreateDiscoveryPublisher(IWSDXMLContext *pContext, IWSDiscover
     return S_OK;
 }
 
+HRESULT WINAPI WSDCreateDiscoveryPublisher2(IWSDXMLContext *pContext, DWORD dwSessionParamsCount,
+                                            const void *pSessionParams,
+                                            IWSDiscoveryPublisher **ppPublisher)
+{
+    TRACE("(%p, %lu, %p, %p)\n", pContext, dwSessionParamsCount, pSessionParams, ppPublisher);
+
+    if (dwSessionParamsCount && !pSessionParams) return E_INVALIDARG;
+    if (dwSessionParamsCount) FIXME("ignoring %lu session parameters\n", dwSessionParamsCount);
+
+    return WSDCreateDiscoveryPublisher(pContext, ppPublisher);
+}
+
 HRESULT WINAPI WSDCreateDiscoveryProvider(IWSDXMLContext *context, IWSDiscoveryProvider **provider)
 {
     FIXME("(%p, %p) stub\n", context, provider);
