@@ -203,11 +203,56 @@ BOOL WINAPI WTSEnumerateProcessesExW(HANDLE server, DWORD *level, DWORD session_
 /************************************************************
  *                WTSEnumerateProcessesExA  (WTSAPI32.@)
  */
-BOOL WINAPI WTSEnumerateProcessesExA(HANDLE server, DWORD *level, DWORD session_id, char **info, DWORD *count)
+BOOL WINAPI WTSEnumerateProcessesExA(HANDLE server, DWORD *level, DWORD session_id, char **ret_info, DWORD *ret_count)
 {
-    FIXME("Stub %p %p %ld %p %p\n", server, level, session_id, info, count);
-    if (count) *count = 0;
-    return FALSE;
+    WTS_PROCESS_INFOW *infoW;
+    WTS_PROCESS_INFOA *info;
+    DWORD i, count, size, len;
+    char *p;
+
+    TRACE("server %p, level %p, session_id %#lx, ret_info %p, ret_count %p\n",
+          server, level, session_id, ret_info, ret_count);
+
+    if (!WTSEnumerateProcessesExW(server, level, session_id, (WCHAR **)&infoW, &count))
+        return FALSE;
+
+    /* WTSEnumerateProcessesExW only supports level 0 */
+    size = count * sizeof(*info);
+    for (i = 0; i < count; i++)
+    {
+        size += WideCharToMultiByte(CP_ACP, 0, infoW[i].pProcessName, -1, NULL, 0, NULL, NULL);
+        if (infoW[i].pUserSid) size += GetLengthSid(infoW[i].pUserSid);
+    }
+
+    if (!(info = malloc(size)))
+    {
+        WTSFreeMemory(infoW);
+        SetLastError(ERROR_OUTOFMEMORY);
+        return FALSE;
+    }
+    p = (char *)(info + count);
+
+    for (i = 0; i < count; i++)
+    {
+        info[i].SessionId = infoW[i].SessionId;
+        info[i].ProcessId = infoW[i].ProcessId;
+        info[i].pProcessName = p;
+        p += WideCharToMultiByte(CP_ACP, 0, infoW[i].pProcessName, -1, p, size - (p - (char *)info), NULL, NULL);
+        info[i].pUserSid = NULL;
+        if (infoW[i].pUserSid)
+        {
+            len = GetLengthSid(infoW[i].pUserSid);
+            memcpy(p, infoW[i].pUserSid, len);
+            info[i].pUserSid = p;
+            p += len;
+        }
+    }
+
+    WTSFreeMemory(infoW);
+    *ret_info = (char *)info;
+    *ret_count = count;
+    SetLastError(0);
+    return TRUE;
 }
 
 /************************************************************
@@ -216,15 +261,18 @@ BOOL WINAPI WTSEnumerateProcessesExA(HANDLE server, DWORD *level, DWORD session_
 BOOL WINAPI WTSEnumerateProcessesA(HANDLE hServer, DWORD Reserved, DWORD Version,
     PWTS_PROCESS_INFOA* ppProcessInfo, DWORD* pCount)
 {
-    FIXME("Stub %p 0x%08lx 0x%08lx %p %p\n", hServer, Reserved, Version,
+    DWORD level = 0;
+
+    TRACE("server %p, reserved %#lx, version %lu, info %p, count %p\n", hServer, Reserved, Version,
           ppProcessInfo, pCount);
 
-    if (!ppProcessInfo || !pCount) return FALSE;
+    if (Reserved || Version != 1)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
 
-    *pCount = 0;
-    *ppProcessInfo = NULL;
-
-    return TRUE;
+    return WTSEnumerateProcessesExA(hServer, &level, WTS_ANY_SESSION, (char **)ppProcessInfo, pCount);
 }
 
 /************************************************************
