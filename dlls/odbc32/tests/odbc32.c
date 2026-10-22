@@ -1476,6 +1476,106 @@ static void restart_as_admin_elevated(void)
     CloseHandle( token );
 }
 
+static void test_ansi_entry_points(void)
+{
+    static const char *names[] =
+    {
+        "SQLBrowseConnectA", "SQLColAttributeA", "SQLColAttributesA", "SQLColumnPrivilegesA", "SQLColumnsA",
+        "SQLConnectA", "SQLDescribeColA", "SQLDriversA", "SQLErrorA", "SQLExecDirectA", "SQLForeignKeysA",
+        "SQLGetConnectAttrA", "SQLGetConnectOptionA", "SQLGetCursorNameA", "SQLGetDescFieldA", "SQLGetDescRecA",
+        "SQLGetDiagFieldA", "SQLGetInfoA", "SQLGetStmtAttrA", "SQLGetTypeInfoA", "SQLNativeSqlA", "SQLPrepareA",
+        "SQLPrimaryKeysA", "SQLProcedureColumnsA", "SQLProceduresA", "SQLSetConnectAttrA", "SQLSetConnectOptionA",
+        "SQLSetCursorNameA", "SQLSetDescFieldA", "SQLSetStmtAttrA", "SQLSpecialColumnsA", "SQLStatisticsA",
+        "SQLTablePrivilegesA", "SQLTablesA",
+    };
+    SQLRETURN (WINAPI *pSQLDriversA)(SQLHENV, SQLUSMALLINT, SQLCHAR *, SQLSMALLINT, SQLSMALLINT *, SQLCHAR *,
+                                     SQLSMALLINT, SQLSMALLINT *);
+    SQLRETURN (WINAPI *pSQLSetConnectAttrA)(SQLHDBC, SQLINTEGER, SQLPOINTER, SQLINTEGER);
+    SQLRETURN (WINAPI *pSQLGetConnectAttrA)(SQLHDBC, SQLINTEGER, SQLPOINTER, SQLINTEGER, SQLINTEGER *);
+    SQLRETURN (WINAPI *pSQLErrorA)(SQLHENV, SQLHDBC, SQLHSTMT, SQLCHAR *, SQLINTEGER *, SQLCHAR *, SQLSMALLINT,
+                                   SQLSMALLINT *);
+    SQLRETURN (WINAPI *pSQLGetDiagFieldA)(SQLSMALLINT, SQLHANDLE, SQLSMALLINT, SQLSMALLINT, SQLPOINTER,
+                                          SQLSMALLINT, SQLSMALLINT *);
+    SQLCHAR desc[256], desc_a[256], attrs[256], attrs_a[256], state[6], msg[256];
+    SQLSMALLINT len, len2, len_a, len2_a;
+    SQLINTEGER native, count, count_a;
+    SQLRETURN ret, ret_a;
+    SQLUINTEGER timeout;
+    HMODULE odbc32;
+    SQLHENV env;
+    SQLHDBC con;
+    unsigned int i;
+
+    odbc32 = GetModuleHandleA( "odbc32.dll" );
+    ok( odbc32 != NULL, "odbc32 not loaded\n" );
+    for (i = 0; i < ARRAY_SIZE(names); i++)
+        ok( GetProcAddress( odbc32, names[i] ) != NULL, "%s not exported\n", names[i] );
+
+    pSQLDriversA = (void *)GetProcAddress( odbc32, "SQLDriversA" );
+    pSQLSetConnectAttrA = (void *)GetProcAddress( odbc32, "SQLSetConnectAttrA" );
+    pSQLGetConnectAttrA = (void *)GetProcAddress( odbc32, "SQLGetConnectAttrA" );
+    pSQLErrorA = (void *)GetProcAddress( odbc32, "SQLErrorA" );
+    pSQLGetDiagFieldA = (void *)GetProcAddress( odbc32, "SQLGetDiagFieldA" );
+    if (!pSQLDriversA || !pSQLSetConnectAttrA || !pSQLGetConnectAttrA || !pSQLErrorA || !pSQLGetDiagFieldA)
+    {
+        win_skip( "ANSI entry points not available\n" );
+        return;
+    }
+
+    ret = SQLAllocEnv( &env );
+    ok( ret == SQL_SUCCESS, "got %d\n", ret );
+
+    /* the A entry points enumerate the same drivers as the unsuffixed ones */
+    len = len2 = len_a = len2_a = 0;
+    memset( desc, 0, sizeof(desc) );
+    memset( attrs, 0, sizeof(attrs) );
+    memset( desc_a, 0, sizeof(desc_a) );
+    memset( attrs_a, 0, sizeof(attrs_a) );
+    ret = SQLDrivers( env, SQL_FETCH_FIRST, desc, sizeof(desc), &len, attrs, sizeof(attrs), &len2 );
+    ret_a = pSQLDriversA( env, SQL_FETCH_FIRST, desc_a, sizeof(desc_a), &len_a, attrs_a, sizeof(attrs_a), &len2_a );
+    ok( ret_a == ret, "got %d, expected %d\n", ret_a, ret );
+    if (ret == SQL_SUCCESS)
+    {
+        ok( !strcmp( (const char *)desc_a, (const char *)desc ), "got %s, expected %s\n", desc_a, desc );
+        ok( len_a == len, "got %d, expected %d\n", len_a, len );
+    }
+
+    ret = SQLAllocConnect( env, &con );
+    ok( ret == SQL_SUCCESS, "got %d\n", ret );
+
+    timeout = 15;
+    ret = pSQLSetConnectAttrA( con, SQL_ATTR_LOGIN_TIMEOUT, (SQLPOINTER)(ULONG_PTR)timeout, sizeof(timeout) );
+    ok( ret == SQL_SUCCESS, "got %d\n", ret );
+
+    timeout = 0;
+    ret = SQLGetConnectAttr( con, SQL_ATTR_LOGIN_TIMEOUT, &timeout, sizeof(timeout), NULL );
+    ok( ret == SQL_SUCCESS, "got %d\n", ret );
+    ok( timeout == 15, "wrong timeout %u\n", timeout );
+
+    timeout = 0;
+    ret = pSQLGetConnectAttrA( con, SQL_ATTR_LOGIN_TIMEOUT, &timeout, sizeof(timeout), NULL );
+    ok( ret == SQL_SUCCESS, "got %d\n", ret );
+    ok( timeout == 15, "wrong timeout %u\n", timeout );
+
+    /* no pending errors on a fresh connection */
+    len = len_a = 0;
+    ret = SQLError( env, con, SQL_NULL_HSTMT, state, &native, msg, sizeof(msg), &len );
+    ret_a = pSQLErrorA( env, con, SQL_NULL_HSTMT, state, &native, msg, sizeof(msg), &len_a );
+    ok( ret_a == ret, "got %d, expected %d\n", ret_a, ret );
+
+    count = count_a = -1;
+    ret = SQLGetDiagField( SQL_HANDLE_DBC, con, 0, SQL_DIAG_NUMBER, &count, sizeof(count), NULL );
+    ret_a = pSQLGetDiagFieldA( SQL_HANDLE_DBC, con, 0, SQL_DIAG_NUMBER, &count_a, sizeof(count_a), NULL );
+    ok( ret_a == ret, "got %d, expected %d\n", ret_a, ret );
+    ok( count_a == count, "got %d, expected %d\n", count_a, count );
+
+    ret = SQLFreeConnect( con );
+    ok( ret == SQL_SUCCESS, "got %d\n", ret );
+
+    ret = SQLFreeEnv( env );
+    ok( ret == SQL_SUCCESS, "got %d\n", ret );
+}
+
 START_TEST(odbc32)
 {
     char driver_path[MAX_PATH];
@@ -1499,4 +1599,5 @@ START_TEST(odbc32)
     test_SQLDrivers();
     test_SQLSetEnvAttr();
     test_SQLSetConnectAttr();
+    test_ansi_entry_points();
 }

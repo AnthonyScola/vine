@@ -123,43 +123,43 @@
 171 stdcall SQLDriversW(long long wstr long ptr ptr long ptr)
 173 stdcall SQLSetDescFieldW(long long long ptr long)
 176 stdcall SQLSetStmtAttrW(long long ptr long)
-206 stub    SQLColAttributesA
-207 stub    SQLConnectA
-208 stub    SQLDescribeColA
-210 stub    SQLErrorA
-211 stub    SQLExecDirectA
-217 stub    SQLGetCursorNameA
-219 stub    SQLPrepareA
-221 stub    SQLSetCursorNameA
-227 stub    SQLColAttributeA
-232 stub    SQLGetConnectAttrA
-233 stub    SQLGetDescFieldA
-234 stub    SQLGetDescRecA
-235 stub    SQLGetDiagFieldA
+206 stdcall SQLColAttributesA(long long long ptr long ptr ptr) SQLColAttributes
+207 stdcall SQLConnectA(long str long str long str long) SQLConnect
+208 stdcall SQLDescribeColA(long long ptr long ptr ptr ptr ptr ptr) SQLDescribeCol
+210 stdcall SQLErrorA(long long long ptr ptr ptr long ptr) SQLError
+211 stdcall SQLExecDirectA(long str long) SQLExecDirect
+217 stdcall SQLGetCursorNameA(long ptr long ptr) SQLGetCursorName
+219 stdcall SQLPrepareA(long str long) SQLPrepare
+221 stdcall SQLSetCursorNameA(long str long) SQLSetCursorName
+227 stdcall SQLColAttributeA(long long long ptr long ptr ptr) SQLColAttribute
+232 stdcall SQLGetConnectAttrA(long long ptr long ptr) SQLGetConnectAttr
+233 stdcall SQLGetDescFieldA(long long long ptr long ptr) SQLGetDescField
+234 stdcall SQLGetDescRecA(long long ptr long ptr ptr ptr ptr ptr ptr ptr) SQLGetDescRec
+235 stdcall SQLGetDiagFieldA(long long long long ptr long ptr) SQLGetDiagField
 236 stdcall SQLGetDiagRecA(long long long ptr ptr ptr long ptr) SQLGetDiagRec
-238 stub    SQLGetStmtAttrA
-239 stub    SQLSetConnectAttrA
-240 stub    SQLColumnsA
+238 stdcall SQLGetStmtAttrA(long long ptr long ptr) SQLGetStmtAttr
+239 stdcall SQLSetConnectAttrA(long long ptr long) SQLSetConnectAttr
+240 stdcall SQLColumnsA(long str long str long str long str long) SQLColumns
 241 stdcall SQLDriverConnectA(long long str long ptr long ptr long) SQLDriverConnect
-242 stub    SQLGetConnectOptionA
-245 stub    SQLGetInfoA
-247 stub    SQLGetTypeInfoA
-250 stub    SQLSetConnectOptionA
-252 stub    SQLSpecialColumnsA
-253 stub    SQLStatisticsA
-254 stub    SQLTablesA
-255 stub    SQLBrowseConnectA
-256 stub    SQLColumnPrivilegesA
+242 stdcall SQLGetConnectOptionA(long long ptr) SQLGetConnectOption
+245 stdcall SQLGetInfoA(long long ptr long ptr) SQLGetInfo
+247 stdcall SQLGetTypeInfoA(long long) SQLGetTypeInfo
+250 stdcall SQLSetConnectOptionA(long long long) SQLSetConnectOption
+252 stdcall SQLSpecialColumnsA(long long str long str long str long long long) SQLSpecialColumns
+253 stdcall SQLStatisticsA(long str long str long str long long long) SQLStatistics
+254 stdcall SQLTablesA(long str long str long str long str long) SQLTables
+255 stdcall SQLBrowseConnectA(long str long ptr long ptr) SQLBrowseConnect
+256 stdcall SQLColumnPrivilegesA(long str long str long str long str long) SQLColumnPrivileges
 257 stdcall SQLDataSourcesA(long long str long ptr ptr long ptr) SQLDataSources
-260 stub    SQLForeignKeysA
-262 stub    SQLNativeSqlA
-265 stub    SQLPrimaryKeysA
-266 stub    SQLProcedureColumnsA
-267 stub    SQLProceduresA
-270 stub    SQLTablePrivilegesA
-271 stub    SQLDriversA
-273 stub    SQLSetDescFieldA
-276 stub    SQLSetStmtAttrA
+260 stdcall SQLForeignKeysA(long str long str long str long str long str long str long) SQLForeignKeys
+262 stdcall SQLNativeSqlA(long str long ptr long ptr) SQLNativeSql
+265 stdcall SQLPrimaryKeysA(long str long str long str long) SQLPrimaryKeys
+266 stdcall SQLProcedureColumnsA(long str long str long str long str long) SQLProcedureColumns
+267 stdcall SQLProceduresA(long str long str long str long) SQLProcedures
+270 stdcall SQLTablePrivilegesA(long str long str long str long) SQLTablePrivileges
+271 stdcall SQLDriversA(long long str long ptr ptr long ptr) SQLDrivers
+273 stdcall SQLSetDescFieldA(long long long ptr long) SQLSetDescField
+276 stdcall SQLSetStmtAttrA(long long ptr long) SQLSetStmtAttr
 300 stub    ODBCSharedTraceFlag
 301 stub    ODBCQualifyFileDSNW
 
