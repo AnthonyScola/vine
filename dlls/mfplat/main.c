@@ -7924,8 +7924,22 @@ void WINAPI MFHeapFree(void *p)
  */
 HRESULT WINAPI MFCreateMFByteStreamOnStreamEx(IUnknown *stream, IMFByteStream **bytestream)
 {
-    FIXME("(%p, %p): stub\n", stream, bytestream);
+    IStream *istream;
+    HRESULT hr;
 
+    TRACE("%p, %p.\n", stream, bytestream);
+
+    if (!stream || !bytestream)
+        return E_POINTER;
+
+    if (SUCCEEDED(IUnknown_QueryInterface(stream, &IID_IStream, (void **)&istream)))
+    {
+        hr = MFCreateMFByteStreamOnStream(istream, bytestream);
+        IStream_Release(istream);
+        return hr;
+    }
+
+    FIXME("Unsupported stream object %p.\n", stream);
     return E_NOTIMPL;
 }
 
