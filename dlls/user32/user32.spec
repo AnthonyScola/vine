@@ -459,7 +459,7 @@
 # @ stub EnableSessionForMMCSS
 @ stdcall EnableWindow(long long) NtUserEnableWindow
 @ stdcall EndDeferWindowPos(long)
-# @ stub EndDeferWindowPosEx
+@ stdcall EndDeferWindowPosEx(long long)
 @ stdcall EndDialog(long long)
 @ stdcall EndMenu() NtUserEndMenu
 @ stdcall EndPaint(long ptr) NtUserEndPaint
@@ -1166,7 +1166,7 @@
 @ stdcall TranslateAcceleratorW(long long ptr) NtUserTranslateAccelerator
 @ stdcall TranslateMDISysAccel(long ptr)
 @ stdcall TranslateMessage(ptr)
-# @ stub TranslateMessageEx
+@ stdcall TranslateMessageEx(ptr long)
 @ stdcall UnhookWinEvent(long) NtUserUnhookWinEvent
 @ stdcall UnhookWindowsHook(long ptr) NtUserUnhookWindowsHook
 @ stdcall UnhookWindowsHookEx(long) NtUserUnhookWindowsHookEx

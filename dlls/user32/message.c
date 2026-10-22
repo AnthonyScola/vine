@@ -792,6 +792,15 @@ BOOL WINAPI TranslateMessage( const MSG *msg )
 }
 
 
+/***********************************************************************
+ *		TranslateMessageEx (USER32.@)
+ */
+BOOL WINAPI TranslateMessageEx( const MSG *msg, UINT flags )
+{
+    return NtUserTranslateMessage( msg, flags );
+}
+
+
 static LRESULT dispatch_message( const MSG *msg, BOOL ansi )
 {
     struct win_proc_params params;

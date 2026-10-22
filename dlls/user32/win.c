@@ -843,6 +843,15 @@ BOOL WINAPI EndDeferWindowPos( HDWP hdwp )
 }
 
 
+/***********************************************************************
+ *		EndDeferWindowPosEx (USER32.@)
+ */
+BOOL WINAPI EndDeferWindowPosEx( HDWP hdwp, BOOL async )
+{
+    return NtUserEndDeferWindowPosEx( hdwp, async );
+}
+
+
 /**********************************************************************
  *		GetWindowWord (USER32.@)
  */
