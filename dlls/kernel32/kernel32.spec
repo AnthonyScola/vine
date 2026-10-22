@@ -1515,6 +1515,7 @@
 @ stdcall SetThreadpoolTimer(ptr ptr long long) NTDLL.TpSetTimer
 @ stdcall SetThreadpoolTimerEx(ptr ptr long long) NTDLL.TpSetTimerEx
 @ stdcall SetThreadpoolWait(ptr long ptr) NTDLL.TpSetWait
+@ stdcall SetThreadpoolWaitEx(ptr long ptr ptr) NTDLL.TpSetWaitEx
 @ stdcall -import SetTimeZoneInformation(ptr)
 @ stub SetTimerQueueTimer
 @ stdcall -arch=win64 SetUmsThreadInformation(ptr long ptr long)
@@ -1546,7 +1547,7 @@
 @ stdcall -import SwitchToThread()
 @ stdcall -import SystemTimeToFileTime(ptr ptr)
 @ stdcall -import SystemTimeToTzSpecificLocalTime (ptr ptr ptr)
-# @ stub SystemTimeToTzSpecificLocalTimeEx
+@ stdcall -import SystemTimeToTzSpecificLocalTimeEx(ptr ptr ptr)
 @ stdcall TerminateJobObject(long long)
 @ stdcall -import TerminateProcess(long long)
 @ stdcall -import TerminateThread(long long)
@@ -1569,7 +1570,7 @@
 @ stdcall TryEnterCriticalSection(ptr) NTDLL.RtlTryEnterCriticalSection
 @ stdcall -import TrySubmitThreadpoolCallback(ptr ptr ptr)
 @ stdcall -import TzSpecificLocalTimeToSystemTime(ptr ptr ptr)
-# @ stub TzSpecificLocalTimeToSystemTimeEx
+@ stdcall -import TzSpecificLocalTimeToSystemTimeEx(ptr ptr ptr)
 # @ stub -arch=x86_64 uaw_lstrcmpW
 # @ stub -arch=x86_64 uaw_lstrcmpiW
 # @ stub -arch=x86_64 uaw_lstrlenW

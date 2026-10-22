@@ -7402,6 +7402,58 @@ BOOL WINAPI DECLSPEC_HOTPATCH TzSpecificLocalTimeToSystemTime( const TIME_ZONE_I
 }
 
 
+static const TIME_ZONE_INFORMATION *get_tz_for_year( const DYNAMIC_TIME_ZONE_INFORMATION *dynamic,
+                                                     USHORT year, TIME_ZONE_INFORMATION *buffer )
+{
+    if (!dynamic) return NULL;  /* current time zone */
+    if (dynamic->TimeZoneKeyName[0] &&
+        GetTimeZoneInformationForYear( year, (DYNAMIC_TIME_ZONE_INFORMATION *)dynamic, buffer ))
+        return buffer;
+    /* the static rules come first in DYNAMIC_TIME_ZONE_INFORMATION */
+    memcpy( buffer, dynamic, sizeof(*buffer) );
+    if (dynamic->DynamicDaylightTimeDisabled) buffer->DaylightDate.wMonth = 0;
+    return buffer;
+}
+
+
+/***********************************************************************
+ *	SystemTimeToTzSpecificLocalTimeEx   (kernelbase.@)
+ */
+BOOL WINAPI DECLSPEC_HOTPATCH SystemTimeToTzSpecificLocalTimeEx( const DYNAMIC_TIME_ZONE_INFORMATION *dynamic,
+                                                                 const SYSTEMTIME *system, SYSTEMTIME *local )
+{
+    TIME_ZONE_INFORMATION tzinfo;
+
+    TRACE( "(%p %p %p)\n", dynamic, system, local );
+
+    if (!system || !local)
+    {
+        SetLastError( ERROR_INVALID_PARAMETER );
+        return FALSE;
+    }
+    return SystemTimeToTzSpecificLocalTime( get_tz_for_year( dynamic, system->wYear, &tzinfo ), system, local );
+}
+
+
+/***********************************************************************
+ *	TzSpecificLocalTimeToSystemTimeEx   (kernelbase.@)
+ */
+BOOL WINAPI DECLSPEC_HOTPATCH TzSpecificLocalTimeToSystemTimeEx( const DYNAMIC_TIME_ZONE_INFORMATION *dynamic,
+                                                                 const SYSTEMTIME *local, SYSTEMTIME *system )
+{
+    TIME_ZONE_INFORMATION tzinfo;
+
+    TRACE( "(%p %p %p)\n", dynamic, local, system );
+
+    if (!system || !local)
+    {
+        SetLastError( ERROR_INVALID_PARAMETER );
+        return FALSE;
+    }
+    return TzSpecificLocalTimeToSystemTime( get_tz_for_year( dynamic, local->wYear, &tzinfo ), local, system );
+}
+
+
 /***********************************************************************
  *	VerLanguageNameA   (kernelbase.@)
  */

@@ -573,9 +573,15 @@ DWORD WINAPI DECLSPEC_HOTPATCH SetThreadIdealProcessor( HANDLE thread, DWORD pro
 BOOL WINAPI DECLSPEC_HOTPATCH SetThreadIdealProcessorEx( HANDLE thread, PROCESSOR_NUMBER *ideal,
                                                          PROCESSOR_NUMBER *previous )
 {
-    FIXME( "(%p %p %p): stub\n", thread, ideal, previous );
-    SetLastError( ERROR_CALL_NOT_IMPLEMENTED );
-    return FALSE;
+    TRACE( "(%p %p %p)\n", thread, ideal, previous );
+
+    if (!ideal || ideal->Group || ideal->Number >= MAXIMUM_PROCESSORS)
+    {
+        SetLastError( ERROR_INVALID_PARAMETER );
+        return FALSE;
+    }
+    if (previous && !GetThreadIdealProcessorEx( thread, previous )) return FALSE;
+    return SetThreadIdealProcessor( thread, ideal->Number ) != ~0u;
 }
 
 

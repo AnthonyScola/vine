@@ -926,6 +926,49 @@ NTSTATUS WINAPI RtlMakeSelfRelativeSD(
 
 
 /**************************************************************************
+ *                 RtlSelfRelativeToAbsoluteSD2 [NTDLL.@]
+ *
+ * Converts a self-relative security descriptor to absolute format in place.
+ */
+NTSTATUS WINAPI RtlSelfRelativeToAbsoluteSD2( PSECURITY_DESCRIPTOR sd, PULONG buffer_size )
+{
+    SECURITY_DESCRIPTOR_RELATIVE *rel = sd;
+    DWORD abs_size = 0, dacl_size = 0, sacl_size = 0, owner_size = 0, group_size = 0;
+    ULONG total, rel_size;
+    NTSTATUS status;
+    BYTE *buf = sd;
+    void *copy;
+
+    TRACE( "%p %p\n", sd, buffer_size );
+
+    if (!sd || !buffer_size) return STATUS_INVALID_PARAMETER;
+    if (!(rel->Control & SE_SELF_RELATIVE)) return STATUS_BAD_DESCRIPTOR_FORMAT;
+
+    status = RtlSelfRelativeToAbsoluteSD( sd, NULL, &abs_size, NULL, &dacl_size, NULL, &sacl_size,
+                                          NULL, &owner_size, NULL, &group_size );
+    if (status != STATUS_BUFFER_TOO_SMALL) return status;
+
+    total = abs_size + dacl_size + sacl_size + owner_size + group_size;
+    if (*buffer_size < total)
+    {
+        *buffer_size = total;
+        return STATUS_BUFFER_TOO_SMALL;
+    }
+
+    rel_size = RtlLengthSecurityDescriptor( sd );
+    if (!(copy = RtlAllocateHeap( GetProcessHeap(), 0, rel_size ))) return STATUS_NO_MEMORY;
+    memcpy( copy, sd, rel_size );
+
+    status = RtlSelfRelativeToAbsoluteSD( copy, buf, &abs_size,
+                                          dacl_size ? (PACL)(buf + abs_size) : NULL, &dacl_size,
+                                          sacl_size ? (PACL)(buf + abs_size + dacl_size) : NULL, &sacl_size,
+                                          owner_size ? (PSID)(buf + abs_size + dacl_size + sacl_size) : NULL, &owner_size,
+                                          group_size ? (PSID)(buf + total - group_size) : NULL, &group_size );
+    RtlFreeHeap( GetProcessHeap(), 0, copy );
+    return status;
+}
+
+/**************************************************************************
  *                 RtlSelfRelativeToAbsoluteSD [NTDLL.@]
  */
 NTSTATUS WINAPI RtlSelfRelativeToAbsoluteSD(

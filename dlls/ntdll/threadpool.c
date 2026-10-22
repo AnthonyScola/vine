@@ -874,6 +874,18 @@ NTSTATUS WINAPI RtlDeleteTimerQueueEx(HANDLE TimerQueue, HANDLE CompletionEvent)
     return status;
 }
 
+/***********************************************************************
+ *              RtlDeleteTimerQueue   (NTDLL.@)
+ *
+ * Deletes a timer queue, waiting for all running callbacks to complete.
+ */
+NTSTATUS WINAPI RtlDeleteTimerQueue(HANDLE TimerQueue)
+{
+    TRACE("%p\n", TimerQueue);
+
+    return RtlDeleteTimerQueueEx(TimerQueue, INVALID_HANDLE_VALUE);
+}
+
 static struct timer_queue *get_timer_queue(HANDLE TimerQueue)
 {
     static struct timer_queue *default_timer_queue;
@@ -3180,21 +3192,17 @@ BOOL WINAPI TpSetTimerEx( TP_TIMER *timer, LARGE_INTEGER *timeout, LONG period, 
     return tp_set_timer( timer, timeout, period, window_length );
 }
 
-/***********************************************************************
- *           TpSetWait    (NTDLL.@)
- */
-VOID WINAPI TpSetWait( TP_WAIT *wait, HANDLE handle, LARGE_INTEGER *timeout )
+static BOOL tp_set_wait( TP_WAIT *wait, HANDLE handle, LARGE_INTEGER *timeout )
 {
     struct threadpool_object *this = impl_from_TP_WAIT( wait );
     ULONGLONG timestamp = MAXLONGLONG;
-    BOOL same_handle;
-
-    TRACE( "%p %p %p\n", wait, handle, timeout );
+    BOOL same_handle, was_pending;
 
     RtlEnterCriticalSection( &waitqueue.cs );
 
     assert( this->u.wait.bucket );
 
+    was_pending = this->u.wait.wait_pending;
     same_handle = this->u.wait.handle == handle;
     tp_wait_close_duped_handle( this );
     if (handle && NtDuplicateObject( NtCurrentProcess(), handle, NtCurrentProcess(),
@@ -3241,6 +3249,27 @@ VOID WINAPI TpSetWait( TP_WAIT *wait, HANDLE handle, LARGE_INTEGER *timeout )
     }
 
     RtlLeaveCriticalSection( &waitqueue.cs );
+    return was_pending;
+}
+
+/***********************************************************************
+ *           TpSetWait    (NTDLL.@)
+ */
+VOID WINAPI TpSetWait( TP_WAIT *wait, HANDLE handle, LARGE_INTEGER *timeout )
+{
+    TRACE( "%p %p %p\n", wait, handle, timeout );
+
+    tp_set_wait( wait, handle, timeout );
+}
+
+/***********************************************************************
+ *           TpSetWaitEx    (NTDLL.@)
+ */
+BOOL WINAPI TpSetWaitEx( TP_WAIT *wait, HANDLE handle, LARGE_INTEGER *timeout, void *reserved )
+{
+    TRACE( "%p %p %p %p\n", wait, handle, timeout, reserved );
+
+    return tp_set_wait( wait, handle, timeout );
 }
 
 /***********************************************************************

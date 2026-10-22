@@ -539,6 +539,22 @@ BOOL WINAPI AdjustTokenPrivileges( HANDLE token, BOOL disable, PTOKEN_PRIVILEGES
 }
 
 /******************************************************************************
+ * CheckTokenMembershipEx    (kernelbase.@)
+ */
+BOOL WINAPI CheckTokenMembershipEx( HANDLE token, PSID sid_to_check, DWORD flags, PBOOL is_member )
+{
+    TRACE( "(%p %s %#lx %p)\n", token, debugstr_sid(sid_to_check), flags, is_member );
+
+    if (flags & ~CTMF_INCLUDE_APPCONTAINER)
+    {
+        SetLastError( ERROR_INVALID_PARAMETER );
+        return FALSE;
+    }
+    /* Wine has no app containers, so CTMF_INCLUDE_APPCONTAINER makes no difference */
+    return CheckTokenMembership( token, sid_to_check, is_member );
+}
+
+/******************************************************************************
  * CheckTokenMembership    (kernelbase.@)
  */
 BOOL WINAPI CheckTokenMembership( HANDLE token, PSID sid_to_check, PBOOL is_member )
@@ -1131,6 +1147,14 @@ BOOL WINAPI MakeAbsoluteSD ( PSECURITY_DESCRIPTOR rel_descr, PSECURITY_DESCRIPTO
     return set_ntstatus( RtlSelfRelativeToAbsoluteSD( rel_descr, abs_descr, abs_size,
                                                       dacl, dacl_size, sacl, sacl_size,
                                                       owner, owner_size, group, group_size ));
+}
+
+/******************************************************************************
+ * MakeAbsoluteSD2    (kernelbase.@)
+ */
+BOOL WINAPI MakeAbsoluteSD2( PSECURITY_DESCRIPTOR descr, LPDWORD size )
+{
+    return set_ntstatus( RtlSelfRelativeToAbsoluteSD2( descr, size ));
 }
 
 /******************************************************************************

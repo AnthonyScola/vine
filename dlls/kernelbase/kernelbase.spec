@@ -131,7 +131,7 @@
 @ stdcall CheckRemoteDebuggerPresent(long ptr)
 # @ stub CheckTokenCapability
 @ stdcall CheckTokenMembership(long ptr ptr)
-# @ stub CheckTokenMembershipEx
+@ stdcall CheckTokenMembershipEx(long ptr long ptr)
 @ stdcall ChrCmpIA(long long)
 @ stdcall ChrCmpIW(long long)
 @ stdcall ClearCommBreak(long)
@@ -987,7 +987,7 @@
 @ stdcall LockFileEx(long long long long long ptr)
 @ stdcall LockResource(long)
 @ stdcall MakeAbsoluteSD(ptr ptr ptr ptr ptr ptr ptr ptr ptr ptr ptr)
-@ stub MakeAbsoluteSD2
+@ stdcall MakeAbsoluteSD2(ptr ptr)
 @ stdcall MakeSelfRelativeSD(ptr ptr ptr)
 @ stdcall MapGenericMask(ptr ptr)
 # @ stub MapPredefinedHandleInternal
@@ -1317,7 +1317,7 @@
 @ stdcall RegDeleteTreeW(long wstr)
 @ stdcall RegDeleteValueA(long str)
 @ stdcall RegDeleteValueW(long wstr)
-# @ stub RegDisablePredefinedCacheEx
+@ stdcall RegDisablePredefinedCacheEx()
 @ stdcall RegEnumKeyExA(long long ptr ptr ptr ptr ptr ptr)
 @ stdcall RegEnumKeyExW(long long ptr ptr ptr ptr ptr ptr)
 @ stdcall RegEnumValueA(long long ptr ptr ptr ptr ptr ptr)
@@ -1549,7 +1549,7 @@
 @ stdcall SetThreadpoolTimer(ptr ptr long long) ntdll.TpSetTimer
 @ stdcall SetThreadpoolTimerEx(ptr ptr long long) ntdll.TpSetTimerEx
 @ stdcall SetThreadpoolWait(ptr long ptr) ntdll.TpSetWait
-# @ stub SetThreadpoolWaitEx
+@ stdcall SetThreadpoolWaitEx(ptr long ptr ptr) ntdll.TpSetWaitEx
 @ stdcall SetTimeZoneInformation(ptr)
 @ stdcall SetTokenInformation(long long ptr long)
 @ stdcall SetUnhandledExceptionFilter(ptr)
@@ -1644,7 +1644,7 @@
 @ stdcall SwitchToThread()
 @ stdcall SystemTimeToFileTime(ptr ptr)
 @ stdcall SystemTimeToTzSpecificLocalTime(ptr ptr ptr)
-@ stub SystemTimeToTzSpecificLocalTimeEx
+@ stdcall SystemTimeToTzSpecificLocalTimeEx(ptr ptr ptr)
 @ stdcall TerminateProcess(long long)
 # @ stub TerminateProcessOnMemoryExhaustion
 @ stdcall TerminateThread(long long)
@@ -1662,7 +1662,7 @@
 @ stdcall TryEnterCriticalSection(ptr) ntdll.RtlTryEnterCriticalSection
 @ stdcall TrySubmitThreadpoolCallback(ptr ptr ptr)
 @ stdcall TzSpecificLocalTimeToSystemTime(ptr ptr ptr)
-@ stub TzSpecificLocalTimeToSystemTimeEx
+@ stdcall TzSpecificLocalTimeToSystemTimeEx(ptr ptr ptr)
 @ stdcall UnhandledExceptionFilter(ptr)
 @ stdcall UnlockFile(long long long long long)
 @ stdcall UnlockFileEx(long long long long ptr)

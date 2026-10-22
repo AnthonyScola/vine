@@ -636,7 +636,7 @@
 @ stdcall RtlDeleteResource(ptr)
 @ stdcall RtlDeleteSecurityObject(ptr)
 @ stdcall RtlDeleteTimer(ptr ptr ptr)
-# @ stub RtlDeleteTimerQueue
+@ stdcall RtlDeleteTimerQueue(ptr)
 @ stdcall RtlDeleteTimerQueueEx(ptr ptr)
 @ stdcall RtlDeregisterWait(ptr)
 @ stdcall RtlDeregisterWaitEx(ptr ptr)
@@ -1012,7 +1012,7 @@
 @ stdcall RtlSecondsSince1970ToTime(long ptr)
 @ stdcall RtlSecondsSince1980ToTime(long ptr)
 # @ stub RtlSeekMemoryStream
-# @ stub RtlSelfRelativeToAbsoluteSD2
+@ stdcall RtlSelfRelativeToAbsoluteSD2(ptr ptr)
 @ stdcall RtlSelfRelativeToAbsoluteSD(ptr ptr ptr ptr ptr ptr ptr ptr ptr ptr ptr)
 @ stdcall RtlSetAllBits(ptr)
 # @ stub RtlSetAttributesSecurityDescriptor
@@ -1203,6 +1203,7 @@
 @ stdcall TpSetTimer(ptr ptr long long)
 @ stdcall TpSetTimerEx(ptr ptr long long)
 @ stdcall TpSetWait(ptr long ptr)
+@ stdcall TpSetWaitEx(ptr long ptr ptr)
 @ stdcall TpSimpleTryPost(ptr ptr ptr)
 @ stdcall TpStartAsyncIoOperation(ptr)
 @ stdcall TpWaitForIoCompletion(ptr long)
