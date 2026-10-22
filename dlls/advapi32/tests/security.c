@@ -4583,6 +4583,46 @@ static void test_PrivateObjectSecurity(void)
 #undef CHECK_RESULT_AND_FREE
 #undef CHECK_ONE_OF_AND_FREE
 
+static void test_SetAclInformation(void)
+{
+    ACL_REVISION_INFORMATION rev;
+    ACL_SIZE_INFORMATION size;
+    char buffer[256];
+    ACL *acl = (ACL *)buffer;
+    BOOL ret;
+
+    ret = InitializeAcl(acl, sizeof(buffer), ACL_REVISION);
+    ok(ret, "InitializeAcl failed, error %lu\n", GetLastError());
+
+    rev.AclRevision = ACL_REVISION_DS;
+    ret = SetAclInformation(acl, &rev, sizeof(rev), AclRevisionInformation);
+    ok(ret, "SetAclInformation failed, error %lu\n", GetLastError());
+    rev.AclRevision = 0;
+    ret = GetAclInformation(acl, &rev, sizeof(rev), AclRevisionInformation);
+    ok(ret, "GetAclInformation failed, error %lu\n", GetLastError());
+    ok(rev.AclRevision == ACL_REVISION_DS, "got revision %lu\n", rev.AclRevision);
+
+    /* the revision can't be lowered */
+    rev.AclRevision = ACL_REVISION;
+    SetLastError(0xdeadbeef);
+    ret = SetAclInformation(acl, &rev, sizeof(rev), AclRevisionInformation);
+    ok(!ret, "SetAclInformation succeeded\n");
+    ok(GetLastError() == ERROR_INVALID_PARAMETER, "got error %lu\n", GetLastError());
+
+    SetLastError(0xdeadbeef);
+    ret = SetAclInformation(acl, &rev, sizeof(rev) - 1, AclRevisionInformation);
+    ok(!ret, "SetAclInformation succeeded\n");
+    ok(GetLastError() == ERROR_INVALID_PARAMETER, "got error %lu\n", GetLastError());
+
+    /* only the revision can be set */
+    memset(&size, 0, sizeof(size));
+    SetLastError(0xdeadbeef);
+    ret = SetAclInformation(acl, &size, sizeof(size), AclSizeInformation);
+    ok(!ret, "SetAclInformation succeeded\n");
+    ok(GetLastError() == ERROR_INVALID_INFO_CLASS || GetLastError() == ERROR_INVALID_PARAMETER,
+       "got error %lu\n", GetLastError());
+}
+
 static void test_InitializeAcl(void)
 {
     char buffer[256];
@@ -8766,6 +8806,7 @@ START_TEST(security)
     test_ConvertSecurityDescriptorToString();
     test_PrivateObjectSecurity();
     test_InitializeAcl();
+    test_SetAclInformation();
     test_GetWindowsAccountDomainSid();
     test_EqualDomainSid();
     test_GetSecurityInfo();

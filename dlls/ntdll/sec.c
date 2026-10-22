@@ -1837,6 +1837,34 @@ NTSTATUS WINAPI RtlConvertSidToUnicodeString(
 }
 
 /******************************************************************************
+ * RtlSetInformationAcl (NTDLL.@)
+ */
+NTSTATUS WINAPI RtlSetInformationAcl( PACL acl, void *info, DWORD length, ACL_INFORMATION_CLASS class )
+{
+    TRACE( "%p %p %lu %d\n", acl, info, length, class );
+
+    if (acl->AclRevision < MIN_ACL_REVISION || acl->AclRevision > MAX_ACL_REVISION)
+        return STATUS_INVALID_PARAMETER;
+
+    switch (class)
+    {
+    case AclRevisionInformation:
+    {
+        ACL_REVISION_INFORMATION *rev = info;
+
+        if (length < sizeof(*rev)) return STATUS_INVALID_PARAMETER;
+        /* the revision can only be raised */
+        if (rev->AclRevision < acl->AclRevision || rev->AclRevision > MAX_ACL_REVISION)
+            return STATUS_INVALID_PARAMETER;
+        acl->AclRevision = rev->AclRevision;
+        return STATUS_SUCCESS;
+    }
+    default:
+        return STATUS_INVALID_INFO_CLASS;
+    }
+}
+
+/******************************************************************************
  * RtlQueryInformationAcl (NTDLL.@)
  */
 NTSTATUS WINAPI RtlQueryInformationAcl(

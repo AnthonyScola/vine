@@ -1528,8 +1528,7 @@ BOOL WINAPI PrivilegedServiceAuditAlarmW( LPCWSTR subsystem, LPCWSTR service, HA
  */
 BOOL WINAPI SetAclInformation( PACL acl, LPVOID info, DWORD len, ACL_INFORMATION_CLASS class )
 {
-    FIXME( "%p %p 0x%08lx 0x%08x - stub\n", acl, info, len, class );
-    return TRUE;
+    return set_ntstatus( RtlSetInformationAcl( acl, info, len, class ));
 }
 
 /******************************************************************************

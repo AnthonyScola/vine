@@ -1027,7 +1027,7 @@
 @ stdcall RtlSetExtendedFeaturesMask(ptr int64)
 @ stdcall RtlSetGroupSecurityDescriptor(ptr ptr long)
 @ stdcall RtlSetHeapInformation(long long ptr long)
-@ stub RtlSetInformationAcl
+@ stdcall RtlSetInformationAcl(ptr ptr long long)
 @ stdcall RtlSetIoCompletionCallback(long ptr long)
 @ stdcall RtlSetLastWin32Error(long)
 @ stdcall RtlSetLastWin32ErrorAndNtStatusFromNtStatus(long)
