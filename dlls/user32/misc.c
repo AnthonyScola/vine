@@ -199,7 +199,8 @@ BOOL WINAPI GetAltTabInfoW(HWND hwnd, int iItem, PALTTABINFO pati, LPWSTR pszIte
  */
 VOID WINAPI SetDebugErrorLevel( DWORD dwLevel )
 {
-    FIXME("(%ld): stub\n", dwLevel);
+    /* documented as not implemented on Windows either */
+    TRACE("(%ld)\n", dwLevel);
 }
 
 
@@ -272,7 +273,8 @@ DWORD WINAPI RegisterTasklist (DWORD x)
  */
 DWORD WINAPI GetAppCompatFlags( HTASK hTask )
 {
-    FIXME("(%p) stub\n", hTask);
+    /* Wine applies no per-application compatibility flags */
+    TRACE("(%p)\n", hTask);
     return 0;
 }
 
@@ -281,7 +283,8 @@ DWORD WINAPI GetAppCompatFlags( HTASK hTask )
  */
 DWORD WINAPI GetAppCompatFlags2( HTASK hTask )
 {
-    FIXME("(%p) stub\n", hTask);
+    /* Wine applies no per-application compatibility flags */
+    TRACE("(%p)\n", hTask);
     return 0;
 }
 
@@ -389,9 +392,8 @@ LRESULT WINAPI SendIMEMessageExW(HWND hwnd, LPARAM lparam)
  */
 VOID WINAPI DisableProcessWindowsGhosting(VOID)
 {
-  FIXME(": stub\n");
-  SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
-  return;
+    /* Wine never replaces hung windows with ghost windows, so there is nothing to disable */
+    TRACE("\n");
 }
 
 /**********************************************************************
@@ -445,7 +447,8 @@ BOOL WINAPI UnregisterSuspendResumeNotification(HPOWERNOTIFY handle)
  */
 BOOL WINAPI IsImmersiveProcess( HANDLE process )
 {
-    FIXME("(%p): stub\n", process);
+    /* Wine doesn't run Windows Store (immersive) applications */
+    TRACE("(%p)\n", process);
     return FALSE;
 }
 
@@ -454,7 +457,14 @@ BOOL WINAPI IsImmersiveProcess( HANDLE process )
  */
 BOOL WINAPI IsWindowRedirectedForPrint( HWND hwnd )
 {
-    FIXME("(%p): stub\n", hwnd);
+    TRACE("(%p)\n", hwnd);
+
+    if (!IsWindow( hwnd ))
+    {
+        SetLastError( ERROR_INVALID_WINDOW_HANDLE );
+        return FALSE;
+    }
+    /* PrintWindow renders directly; windows are never redirected */
     return FALSE;
 }
 
