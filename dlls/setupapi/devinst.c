@@ -89,6 +89,7 @@ struct DeviceInfoSet
     GUID ClassGuid;
     HWND hwndParent;
     struct list devices;
+    struct device *selected;
 };
 
 struct device
@@ -768,6 +769,7 @@ static void delete_device(struct device *device)
     {
         delete_device_iface(iface);
     }
+    if (device->set->selected == device) device->set->selected = NULL;
     list_remove(&device->entry);
     free(device);
 }
@@ -1218,6 +1220,7 @@ SetupDiCreateDeviceInfoListExW(const GUID *ClassGuid,
             ClassGuid ? ClassGuid : &GUID_NULL,
             sizeof(list->ClassGuid));
     list_init(&list->devices);
+    list->selected = NULL;
 
     return list;
 }
@@ -2217,6 +2220,74 @@ BOOL WINAPI SetupDiGetDeviceInfoListDetailW(HDEVINFO devinfo, SP_DEVINFO_LIST_DE
     DevInfoData->ClassGuid = set->ClassGuid;
     DevInfoData->RemoteMachineHandle = NULL;
     DevInfoData->RemoteMachineName[0] = '\0';
+    return TRUE;
+}
+
+/***********************************************************************
+ *		SetupDiGetDeviceInfoListClass (SETUPAPI.@)
+ */
+BOOL WINAPI SetupDiGetDeviceInfoListClass(HDEVINFO devinfo, GUID *class)
+{
+    struct DeviceInfoSet *set;
+
+    TRACE("devinfo %p, class %p.\n", devinfo, class);
+
+    if (!(set = get_device_set(devinfo)))
+        return FALSE;
+
+    if (IsEqualGUID(&set->ClassGuid, &GUID_NULL))
+    {
+        SetLastError(ERROR_NO_ASSOCIATED_CLASS);
+        return FALSE;
+    }
+    *class = set->ClassGuid;
+    return TRUE;
+}
+
+/***********************************************************************
+ *		SetupDiGetSelectedDevice (SETUPAPI.@)
+ */
+BOOL WINAPI SetupDiGetSelectedDevice(HDEVINFO devinfo, SP_DEVINFO_DATA *device_data)
+{
+    struct DeviceInfoSet *set;
+
+    TRACE("devinfo %p, device_data %p.\n", devinfo, device_data);
+
+    if (!(set = get_device_set(devinfo)))
+        return FALSE;
+
+    if (!device_data)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+    if (device_data->cbSize != sizeof(SP_DEVINFO_DATA))
+    {
+        SetLastError(ERROR_INVALID_USER_BUFFER);
+        return FALSE;
+    }
+    if (!set->selected)
+    {
+        SetLastError(ERROR_NO_DEVICE_SELECTED);
+        return FALSE;
+    }
+    copy_device_data(device_data, set->selected);
+    return TRUE;
+}
+
+/***********************************************************************
+ *		SetupDiSetSelectedDevice (SETUPAPI.@)
+ */
+BOOL WINAPI SetupDiSetSelectedDevice(HDEVINFO devinfo, SP_DEVINFO_DATA *device_data)
+{
+    struct device *device;
+
+    TRACE("devinfo %p, device_data %p.\n", devinfo, device_data);
+
+    if (!(device = get_device(devinfo, device_data)))
+        return FALSE;
+
+    device->set->selected = device;
     return TRUE;
 }
 

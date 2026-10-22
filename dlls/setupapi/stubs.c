@@ -249,15 +249,8 @@ BOOL WINAPI SetupDiLoadClassIcon(const GUID *ClassGuid, HICON *LargeIcon, PINT M
 }
 
 /***********************************************************************
- *              SetupDiSetSelectedDevice  (SETUPAPI.@)
+ *              SetupDiGetClassRegistryPropertyW  (SETUPAPI.@)
  */
-BOOL WINAPI SetupDiSetSelectedDevice(HDEVINFO SetupDiSetSelectedDevice, PSP_DEVINFO_DATA DeviceInfoData)
-{
-    FIXME("(%p, %p) stub\n", SetupDiSetSelectedDevice, DeviceInfoData);
-
-    return TRUE;
-}
-
 BOOL WINAPI SetupDiGetClassRegistryPropertyW(const GUID *class, DWORD prop, DWORD *datatype, BYTE *buff, DWORD size,
     DWORD *req_size, const WCHAR *name, VOID *reserved)
 {

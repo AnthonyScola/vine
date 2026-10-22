@@ -709,6 +709,61 @@ static void check_device_info_(int line, HDEVINFO set, int index, const GUID *cl
 }
 #define check_device_info(a,b,c,d) check_device_info_(__LINE__,a,b,c,d)
 
+static void test_selected_device(void)
+{
+    SP_DEVINFO_DATA device = {sizeof(device)}, ret_device = {sizeof(ret_device)};
+    HDEVINFO set;
+    GUID class;
+    BOOL ret;
+
+    set = SetupDiCreateDeviceInfoList(NULL, NULL);
+    ok(set != INVALID_HANDLE_VALUE, "Failed to create device list, error %#lx.\n", GetLastError());
+    SetLastError(0xdeadbeef);
+    ret = SetupDiGetDeviceInfoListClass(set, &class);
+    ok(!ret, "Expected failure.\n");
+    ok(GetLastError() == ERROR_NO_ASSOCIATED_CLASS, "Got unexpected error %#lx.\n", GetLastError());
+    SetupDiDestroyDeviceInfoList(set);
+
+    set = SetupDiCreateDeviceInfoList(&guid, NULL);
+    ok(set != INVALID_HANDLE_VALUE, "Failed to create device list, error %#lx.\n", GetLastError());
+    memset(&class, 0, sizeof(class));
+    ret = SetupDiGetDeviceInfoListClass(set, &class);
+    ok(ret, "Failed to get class, error %#lx.\n", GetLastError());
+    ok(IsEqualGUID(&class, &guid), "Got class %s.\n", debugstr_guid(&class));
+
+    SetLastError(0xdeadbeef);
+    ret = SetupDiGetSelectedDevice(set, &ret_device);
+    ok(!ret, "Expected failure.\n");
+    ok(GetLastError() == ERROR_NO_DEVICE_SELECTED, "Got unexpected error %#lx.\n", GetLastError());
+
+    ret = SetupDiCreateDeviceInfoA(set, "Root\\LEGACY_BOGUS\\0000", &guid, NULL, NULL, 0, &device);
+    ok(ret, "Failed to create device, error %#lx.\n", GetLastError());
+
+    ret = SetupDiSetSelectedDevice(set, &device);
+    ok(ret, "Failed to select device, error %#lx.\n", GetLastError());
+    ret = SetupDiGetSelectedDevice(set, &ret_device);
+    ok(ret, "Failed to get selected device, error %#lx.\n", GetLastError());
+    ok(ret_device.DevInst == device.DevInst, "Got unexpected devinst %#lx.\n", ret_device.DevInst);
+    ok(ret_device.Reserved == device.Reserved, "Got unexpected reserved %#Ix.\n", ret_device.Reserved);
+
+    ret_device.cbSize = 0;
+    SetLastError(0xdeadbeef);
+    ret = SetupDiGetSelectedDevice(set, &ret_device);
+    ok(!ret, "Expected failure.\n");
+    ok(GetLastError() == ERROR_INVALID_USER_BUFFER, "Got unexpected error %#lx.\n", GetLastError());
+    ret_device.cbSize = sizeof(ret_device);
+
+    /* deleting the selected device clears the selection */
+    ret = SetupDiDeleteDeviceInfo(set, &device);
+    ok(ret, "Failed to delete device, error %#lx.\n", GetLastError());
+    SetLastError(0xdeadbeef);
+    ret = SetupDiGetSelectedDevice(set, &ret_device);
+    ok(!ret, "Expected failure.\n");
+    ok(GetLastError() == ERROR_NO_DEVICE_SELECTED, "Got unexpected error %#lx.\n", GetLastError());
+
+    SetupDiDestroyDeviceInfoList(set);
+}
+
 static void test_device_info(void)
 {
     static const GUID deadbeef = {0xdeadbeef,0xdead,0xbeef,{0xde,0xad,0xbe,0xef,0xde,0xad,0xbe,0xef}};
@@ -5790,6 +5845,7 @@ START_TEST(devinst)
     test_open_class_key();
     test_install_class();
     test_device_info();
+    test_selected_device();
     test_device_property();
     test_get_device_instance_id();
     test_open_device_info();
