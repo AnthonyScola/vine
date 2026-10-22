@@ -4723,9 +4723,11 @@ HRESULT WINAPI DebugCreate(REFIID riid, void **obj)
 */
 HRESULT WINAPI DebugCreateEx(REFIID riid, DWORD flags, void **obj)
 {
-    FIXME("%s, %#lx, %p: stub\n", debugstr_guid(riid), flags, obj);
+    TRACE("%s, %#lx, %p.\n", debugstr_guid(riid), flags, obj);
 
-    return E_NOTIMPL;
+    if (flags) FIXME("Ignoring engine options %#lx.\n", flags);
+
+    return DebugCreate(riid, obj);
 }
 
 /************************************************************
