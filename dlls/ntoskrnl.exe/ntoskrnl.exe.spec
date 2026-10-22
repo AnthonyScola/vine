@@ -698,11 +698,11 @@
 @ stub LpcPortObjectType
 @ stub LpcRequestPort
 @ stub LpcRequestWaitReplyPort
-@ stub LsaCallAuthenticationPackage
-@ stub LsaDeregisterLogonProcess
-@ stub LsaFreeReturnBuffer
+@ stdcall LsaCallAuthenticationPackage(long long ptr long ptr ptr ptr) secur32.LsaCallAuthenticationPackage
+@ stdcall LsaDeregisterLogonProcess(long) secur32.LsaDeregisterLogonProcess
+@ stdcall LsaFreeReturnBuffer(ptr) secur32.LsaFreeReturnBuffer
 @ stub LsaLogonUser
-@ stub LsaLookupAuthenticationPackage
+@ stdcall LsaLookupAuthenticationPackage(ptr ptr ptr) secur32.LsaLookupAuthenticationPackage
 @ stub LsaRegisterLogonProcess
 @ stub Mm64BitPhysicalAddress
 @ stub MmAddPhysicalMemory
@@ -1119,7 +1119,7 @@
 @ stdcall RtlGUIDFromString(ptr ptr)
 @ stub RtlGenerate8dot3Name
 @ stdcall RtlGetAce(ptr long ptr)
-@ stub RtlGetCallersAddress
+@ stdcall RtlGetCallersAddress(ptr ptr) ntdll.RtlGetCallersAddress
 @ stdcall RtlGetCompressionWorkSpaceSize(long ptr ptr)
 @ stdcall RtlGetControlSecurityDescriptor(ptr ptr ptr)
 @ stdcall RtlGetDaclSecurityDescriptor(ptr ptr ptr ptr)
@@ -1260,7 +1260,7 @@
 @ stdcall RtlRunOnceInitialize(ptr)
 @ stdcall RtlSecondsSince1970ToTime(long ptr)
 @ stdcall RtlSecondsSince1980ToTime(long ptr)
-@ stub RtlSelfRelativeToAbsoluteSD2
+@ stdcall RtlSelfRelativeToAbsoluteSD2(ptr ptr) ntdll.RtlSelfRelativeToAbsoluteSD2
 @ stdcall RtlSelfRelativeToAbsoluteSD(ptr ptr ptr ptr ptr ptr ptr ptr ptr ptr ptr)
 @ stdcall RtlSetAllBits(ptr)
 @ stub RtlSetBit
@@ -1327,7 +1327,7 @@
 @ stdcall RtlVerifyVersionInfo(ptr long int64)
 @ stdcall -arch=!i386 RtlVirtualUnwind(long long long ptr ptr ptr ptr ptr)
 @ stub RtlVolumeDeviceToDosName
-@ stub RtlWalkFrameChain
+@ stdcall RtlWalkFrameChain(ptr long long) ntdll.RtlWalkFrameChain
 @ stdcall RtlWriteRegistryValue(long ptr ptr long ptr long)
 @ stub RtlZeroHeap
 @ stdcall RtlZeroMemory(ptr long)
@@ -1517,7 +1517,7 @@
 @ stdcall -private ZwResetEvent(long ptr) NtResetEvent
 @ stdcall -private ZwRestoreKey(long long long) NtRestoreKey
 @ stdcall -private ZwSaveKey(long long) NtSaveKey
-@ stub ZwSaveKeyEx
+@ stdcall ZwSaveKeyEx(long long long)
 @ stdcall -private ZwSecureConnectPort(ptr ptr ptr ptr ptr ptr ptr ptr ptr) NtSecureConnectPort
 @ stub ZwSetBootEntryOrder
 @ stub ZwSetBootOptions

@@ -4522,6 +4522,20 @@ NTSTATUS WINAPI ZwUnloadDriver( const UNICODE_STRING *service_name )
 }
 
 /***********************************************************************
+ *           ZwSaveKeyEx (NTOSKRNL.EXE.@)
+ */
+NTSTATUS WINAPI ZwSaveKeyEx( HANDLE key, HANDLE file, ULONG format )
+{
+    TRACE( "(%p, %p, %#lx)\n", key, file, format );
+
+    /* REG_STANDARD_FORMAT, REG_LATEST_FORMAT, REG_NO_COMPRESSION; Wine has a single hive format */
+    if (format != 1 && format != 2 && format != 4)
+        return STATUS_INVALID_PARAMETER;
+
+    return NtSaveKey( key, file );
+}
+
+/***********************************************************************
  *           IoCreateFileEx (NTOSKRNL.EXE.@)
  */
 NTSTATUS WINAPI IoCreateFileEx(HANDLE *handle, ACCESS_MASK access, OBJECT_ATTRIBUTES *attr,
