@@ -3496,8 +3496,16 @@ VOID WINAPI ColorRGBToHLS(COLORREF cRGB, LPWORD pwHue,
  */
 HPALETTE WINAPI SHCreateShellPalette(HDC hdc)
 {
-	FIXME("stub\n");
-	return CreateHalftonePalette(hdc);
+    HPALETTE palette;
+    HDC screen = NULL;
+
+    TRACE("(%p)\n", hdc);
+
+    /* the shell palette is the halftone palette */
+    if (!hdc) hdc = screen = GetDC(NULL);
+    palette = CreateHalftonePalette(hdc);
+    if (screen) ReleaseDC(NULL, screen);
+    return palette;
 }
 
 /*************************************************************************

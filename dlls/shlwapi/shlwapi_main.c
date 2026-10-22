@@ -234,7 +234,14 @@ HRESULT WINAPI SHGetViewStatePropertyBag(PCIDLIST_ABSOLUTE pidl, PCWSTR bag_name
  */
 BOOL WINAPI SHIsLowMemoryMachine(DWORD type)
 {
-    FIXME("%ld stub\n", type);
+    MEMORYSTATUSEX status;
 
-    return FALSE;
+    TRACE("%ld\n", type);
+
+    /* ILMM_IE4 is the only documented type: 32 MB or less on NT-based systems */
+    if (type != ILMM_IE4) return FALSE;
+
+    status.dwLength = sizeof(status);
+    if (!GlobalMemoryStatusEx(&status)) return FALSE;
+    return status.ullTotalPhys <= 32 * 1024 * 1024;
 }
