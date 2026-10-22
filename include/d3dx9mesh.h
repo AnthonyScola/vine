@@ -792,6 +792,7 @@ HRESULT WINAPI D3DXComputeIMTFromSignal(ID3DXMesh *mesh, DWORD texture_idx, UINT
 HRESULT WINAPI D3DXComputeIMTFromTexture(struct ID3DXMesh *mesh, struct IDirect3DTexture9 *texture,
         DWORD texture_idx, DWORD options, LPD3DXUVATLASCB cb, void *ctx, struct ID3DXBuffer **out);
 HRESULT WINAPI D3DXComputeNormals(ID3DXBaseMesh *mesh, const DWORD *adjacency);
+HRESULT WINAPI D3DXComputeTangentFrame(ID3DXMesh *mesh, DWORD options);
 HRESULT WINAPI D3DXComputeTangentFrameEx(ID3DXMesh *mesh_in, DWORD texture_in_semantic, DWORD texture_in_idx,
         DWORD u_partial_out_semantic, DWORD u_partial_out_idx, DWORD v_partial_out_semantic,
         DWORD v_partial_out_idx, DWORD normal_out_semantic, DWORD normal_out_idx, DWORD flags,

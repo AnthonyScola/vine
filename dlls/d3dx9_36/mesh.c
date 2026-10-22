@@ -7463,6 +7463,18 @@ done:
 }
 
 /*************************************************************************
+ * D3DXComputeTangentFrame    (D3DX9_36.@)
+ */
+HRESULT WINAPI D3DXComputeTangentFrame(ID3DXMesh *mesh, DWORD options)
+{
+    TRACE("mesh %p, options %#lx.\n", mesh, options);
+
+    return D3DXComputeTangentFrameEx(mesh, D3DDECLUSAGE_TEXCOORD, 0, D3DDECLUSAGE_BINORMAL, 0,
+            D3DDECLUSAGE_TANGENT, 0, D3DDECLUSAGE_NORMAL, 0, options | D3DXTANGENT_GENERATE_IN_PLACE,
+            NULL, 0.01f, 0.25f, 0.01f, NULL, NULL);
+}
+
+/*************************************************************************
  * D3DXComputeNormals    (D3DX9_36.@)
  */
 HRESULT WINAPI D3DXComputeNormals(struct ID3DXBaseMesh *mesh, const DWORD *adjacency)
