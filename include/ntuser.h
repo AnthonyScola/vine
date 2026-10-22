@@ -126,6 +126,7 @@ struct ntuser_thread_info
     UINT           dpi_context;       /* DPI awareness context */
     UINT64         client_imm;        /* client IMM thread info */
     UINT64         wmchar_data;       /* client data for WM_CHAR mappings */
+    INT            dpi_hosting;       /* DPI hosting behavior, set by user32 */
 };
 
 #ifndef WINE_UNIX_LIB

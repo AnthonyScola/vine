@@ -822,8 +822,9 @@ DPI_AWARENESS_CONTEXT WINAPI SetThreadDpiAwarenessContext( DPI_AWARENESS_CONTEXT
  */
 DPI_HOSTING_BEHAVIOR WINAPI GetThreadDpiHostingBehavior( void )
 {
-    FIXME("(): stub\n");
-    return DPI_HOSTING_BEHAVIOR_DEFAULT;
+    TRACE("()\n");
+
+    return NtUserGetThreadInfo()->dpi_hosting;
 }
 
 /**********************************************************************
@@ -831,8 +832,19 @@ DPI_HOSTING_BEHAVIOR WINAPI GetThreadDpiHostingBehavior( void )
  */
 DPI_HOSTING_BEHAVIOR WINAPI SetThreadDpiHostingBehavior( DPI_HOSTING_BEHAVIOR value )
 {
-    FIXME("(%d): stub\n", value);
-    return DPI_HOSTING_BEHAVIOR_DEFAULT;
+    struct ntuser_thread_info *info = NtUserGetThreadInfo();
+    DPI_HOSTING_BEHAVIOR prev;
+
+    TRACE("(%d)\n", value);
+
+    if (value != DPI_HOSTING_BEHAVIOR_DEFAULT && value != DPI_HOSTING_BEHAVIOR_MIXED)
+    {
+        SetLastError( ERROR_INVALID_PARAMETER );
+        return DPI_HOSTING_BEHAVIOR_INVALID;
+    }
+    prev = info->dpi_hosting;
+    info->dpi_hosting = value;
+    return prev;
 }
 
 /***********************************************************************
@@ -993,13 +1005,21 @@ BOOL WINAPI GetAutoRotationState( AR_STATE *state )
     return TRUE;
 }
 
+static ORIENTATION_PREFERENCE auto_rotation_preferences = ORIENTATION_PREFERENCE_NONE;
+
 /**********************************************************************
  *              GetDisplayAutoRotationPreferences (USER32.@)
  */
 BOOL WINAPI GetDisplayAutoRotationPreferences( ORIENTATION_PREFERENCE *orientation )
 {
-    FIXME("(%p): stub\n", orientation);
-    *orientation = ORIENTATION_PREFERENCE_NONE;
+    TRACE("(%p)\n", orientation);
+
+    if (!orientation)
+    {
+        SetLastError( ERROR_INVALID_PARAMETER );
+        return FALSE;
+    }
+    *orientation = auto_rotation_preferences;
     return TRUE;
 }
 
@@ -1008,7 +1028,19 @@ BOOL WINAPI GetDisplayAutoRotationPreferences( ORIENTATION_PREFERENCE *orientati
  */
 BOOL WINAPI SetDisplayAutoRotationPreferences( ORIENTATION_PREFERENCE orientation )
 {
-    FIXME("(%d): stub\n", orientation);
+    const ORIENTATION_PREFERENCE valid = ORIENTATION_PREFERENCE_LANDSCAPE | ORIENTATION_PREFERENCE_PORTRAIT |
+                                         ORIENTATION_PREFERENCE_LANDSCAPE_FLIPPED |
+                                         ORIENTATION_PREFERENCE_PORTRAIT_FLIPPED;
+
+    TRACE("(%d)\n", orientation);
+
+    if (orientation & ~valid)
+    {
+        SetLastError( ERROR_INVALID_PARAMETER );
+        return FALSE;
+    }
+    /* the preference is only a hint; Wine never rotates the display itself */
+    auto_rotation_preferences = orientation;
     return TRUE;
 }
 

@@ -4638,6 +4638,76 @@ static void test_dpi_window(void)
     pSetThreadDpiAwarenessContext( orig );
 }
 
+static void test_DisplayAutoRotationPreferences(void)
+{
+    BOOL (WINAPI *pGetDisplayAutoRotationPreferences)(ORIENTATION_PREFERENCE *);
+    BOOL (WINAPI *pSetDisplayAutoRotationPreferences)(ORIENTATION_PREFERENCE);
+    HMODULE user32 = GetModuleHandleA("user32.dll");
+    ORIENTATION_PREFERENCE pref;
+    BOOL ret;
+
+    pGetDisplayAutoRotationPreferences = (void *)GetProcAddress(user32, "GetDisplayAutoRotationPreferences");
+    pSetDisplayAutoRotationPreferences = (void *)GetProcAddress(user32, "SetDisplayAutoRotationPreferences");
+    if (!pGetDisplayAutoRotationPreferences || !pSetDisplayAutoRotationPreferences)
+    {
+        win_skip("DisplayAutoRotationPreferences functions not available\n");
+        return;
+    }
+
+    pref = 0xdeadbeef;
+    ret = pGetDisplayAutoRotationPreferences(&pref);
+    ok(ret, "GetDisplayAutoRotationPreferences failed, error %lu\n", GetLastError());
+    ok(pref == ORIENTATION_PREFERENCE_NONE, "got %#x\n", pref);
+
+    ret = pSetDisplayAutoRotationPreferences(ORIENTATION_PREFERENCE_LANDSCAPE | ORIENTATION_PREFERENCE_LANDSCAPE_FLIPPED);
+    ok(ret, "SetDisplayAutoRotationPreferences failed, error %lu\n", GetLastError());
+    ret = pGetDisplayAutoRotationPreferences(&pref);
+    ok(ret, "GetDisplayAutoRotationPreferences failed, error %lu\n", GetLastError());
+    ok(pref == (ORIENTATION_PREFERENCE_LANDSCAPE | ORIENTATION_PREFERENCE_LANDSCAPE_FLIPPED), "got %#x\n", pref);
+
+    SetLastError(0xdeadbeef);
+    ret = pSetDisplayAutoRotationPreferences(0x10);
+    ok(!ret, "SetDisplayAutoRotationPreferences succeeded\n");
+    ok(GetLastError() == ERROR_INVALID_PARAMETER, "got error %lu\n", GetLastError());
+
+    ret = pSetDisplayAutoRotationPreferences(ORIENTATION_PREFERENCE_NONE);
+    ok(ret, "SetDisplayAutoRotationPreferences failed, error %lu\n", GetLastError());
+}
+
+static void test_ThreadDpiHostingBehavior(void)
+{
+    DPI_HOSTING_BEHAVIOR (WINAPI *pGetThreadDpiHostingBehavior)(void);
+    DPI_HOSTING_BEHAVIOR (WINAPI *pSetThreadDpiHostingBehavior)(DPI_HOSTING_BEHAVIOR);
+    HMODULE user32 = GetModuleHandleA("user32.dll");
+    DPI_HOSTING_BEHAVIOR behavior;
+
+    pGetThreadDpiHostingBehavior = (void *)GetProcAddress(user32, "GetThreadDpiHostingBehavior");
+    pSetThreadDpiHostingBehavior = (void *)GetProcAddress(user32, "SetThreadDpiHostingBehavior");
+    if (!pGetThreadDpiHostingBehavior || !pSetThreadDpiHostingBehavior)
+    {
+        win_skip("ThreadDpiHostingBehavior functions not available\n");
+        return;
+    }
+
+    behavior = pGetThreadDpiHostingBehavior();
+    ok(behavior == DPI_HOSTING_BEHAVIOR_DEFAULT, "got %d\n", behavior);
+
+    behavior = pSetThreadDpiHostingBehavior(DPI_HOSTING_BEHAVIOR_MIXED);
+    ok(behavior == DPI_HOSTING_BEHAVIOR_DEFAULT, "got %d\n", behavior);
+    behavior = pGetThreadDpiHostingBehavior();
+    ok(behavior == DPI_HOSTING_BEHAVIOR_MIXED, "got %d\n", behavior);
+
+    SetLastError(0xdeadbeef);
+    behavior = pSetThreadDpiHostingBehavior(5);
+    ok(behavior == DPI_HOSTING_BEHAVIOR_INVALID, "got %d\n", behavior);
+    ok(GetLastError() == ERROR_INVALID_PARAMETER, "got error %lu\n", GetLastError());
+    behavior = pGetThreadDpiHostingBehavior();
+    ok(behavior == DPI_HOSTING_BEHAVIOR_MIXED, "got %d\n", behavior);
+
+    behavior = pSetThreadDpiHostingBehavior(DPI_HOSTING_BEHAVIOR_DEFAULT);
+    ok(behavior == DPI_HOSTING_BEHAVIOR_MIXED, "got %d\n", behavior);
+}
+
 static void test_GetAutoRotationState(void)
 {
     AR_STATE state;
@@ -4746,6 +4816,8 @@ START_TEST(sysparams)
     test_EnumDisplaySettings( );
     test_GetSysColorBrush( );
     test_GetAutoRotationState( );
+    test_DisplayAutoRotationPreferences();
+    test_ThreadDpiHostingBehavior();
     test_SetThreadDpiAwarenessContext();
     test_IsValidDpiAwarenessContext();
     test_GetDpiFromDpiAwarenessContext();
