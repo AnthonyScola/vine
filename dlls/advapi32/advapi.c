@@ -83,11 +83,18 @@ BOOL WINAPI GetUserNameW( LPWSTR name, LPDWORD size )
  */
 BOOL WINAPI GetCurrentHwProfileA(LPHW_PROFILE_INFOA pInfo)
 {
-	FIXME("(%p) semi-stub\n", pInfo);
-	pInfo->dwDockInfo = DOCKINFO_DOCKED;
-	strcpy(pInfo->szHwProfileGuid,"{12340001-1234-1234-1234-123456789012}");
-	strcpy(pInfo->szHwProfileName,"Wine Profile");
-	return TRUE;
+    HW_PROFILE_INFOW infoW;
+
+    TRACE("(%p)\n", pInfo);
+
+    if (!GetCurrentHwProfileW(&infoW)) return FALSE;
+
+    pInfo->dwDockInfo = infoW.dwDockInfo;
+    WideCharToMultiByte(CP_ACP, 0, infoW.szHwProfileGuid, -1, pInfo->szHwProfileGuid,
+                        sizeof(pInfo->szHwProfileGuid), NULL, NULL);
+    WideCharToMultiByte(CP_ACP, 0, infoW.szHwProfileName, -1, pInfo->szHwProfileName,
+                        sizeof(pInfo->szHwProfileName), NULL, NULL);
+    return TRUE;
 }
 
 /******************************************************************************
@@ -97,8 +104,43 @@ BOOL WINAPI GetCurrentHwProfileA(LPHW_PROFILE_INFOA pInfo)
  */
 BOOL WINAPI GetCurrentHwProfileW(LPHW_PROFILE_INFOW pInfo)
 {
-       FIXME("(%p)\n", pInfo);
-       return FALSE;
+    static const WCHAR profiles_key[] = L"System\\CurrentControlSet\\Control\\IDConfigDB\\Hardware Profiles\\0001";
+    DWORD size;
+    HKEY key;
+
+    TRACE("(%p)\n", pInfo);
+
+    if (!pInfo)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+
+    /* Wine has no docking support; report the defaults unless the registry says otherwise */
+    pInfo->dwDockInfo = DOCKINFO_DOCKED;
+    lstrcpyW(pInfo->szHwProfileGuid, L"{12340001-1234-1234-1234-123456789012}");
+    lstrcpyW(pInfo->szHwProfileName, L"Wine Profile");
+
+    if (!RegOpenKeyExW(HKEY_LOCAL_MACHINE, profiles_key, 0, KEY_READ, &key))
+    {
+        WCHAR buffer[MAX_PROFILE_LEN];
+
+        size = sizeof(buffer) - sizeof(WCHAR);
+        if (!RegQueryValueExW(key, L"HwProfileGuid", NULL, NULL, (BYTE *)buffer, &size) &&
+            size < sizeof(pInfo->szHwProfileGuid))
+        {
+            buffer[size / sizeof(WCHAR)] = 0;
+            lstrcpyW(pInfo->szHwProfileGuid, buffer);
+        }
+        size = sizeof(buffer) - sizeof(WCHAR);
+        if (!RegQueryValueExW(key, L"FriendlyName", NULL, NULL, (BYTE *)buffer, &size))
+        {
+            buffer[size / sizeof(WCHAR)] = 0;
+            lstrcpyW(pInfo->szHwProfileName, buffer);
+        }
+        RegCloseKey(key);
+    }
+    return TRUE;
 }
 
 
