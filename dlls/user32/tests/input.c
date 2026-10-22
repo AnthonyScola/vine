@@ -5636,6 +5636,72 @@ static void test_input_message_source(void)
     UnhookWindowsHookEx( kbd_hook );
 }
 
+static void test_RegisterTouchWindow(void)
+{
+    BOOL (WINAPI *pRegisterTouchWindow)(HWND, ULONG);
+    BOOL (WINAPI *pUnregisterTouchWindow)(HWND);
+    BOOL (WINAPI *pIsTouchWindow)(HWND, ULONG *);
+    BOOL (WINAPI *pCloseTouchInputHandle)(HTOUCHINPUT);
+    HMODULE user32 = GetModuleHandleA( "user32.dll" );
+    ULONG flags;
+    HWND hwnd;
+    BOOL ret;
+
+    pRegisterTouchWindow = (void *)GetProcAddress( user32, "RegisterTouchWindow" );
+    pUnregisterTouchWindow = (void *)GetProcAddress( user32, "UnregisterTouchWindow" );
+    pIsTouchWindow = (void *)GetProcAddress( user32, "IsTouchWindow" );
+    pCloseTouchInputHandle = (void *)GetProcAddress( user32, "CloseTouchInputHandle" );
+    if (!pRegisterTouchWindow || !pUnregisterTouchWindow || !pIsTouchWindow || !pCloseTouchInputHandle)
+    {
+        win_skip( "touch window functions not available\n" );
+        return;
+    }
+
+    hwnd = CreateWindowW( L"static", NULL, WS_POPUP, 0, 0, 10, 10, NULL, NULL, NULL, NULL );
+    ok( hwnd != NULL, "CreateWindowW failed, error %lu\n", GetLastError() );
+
+    ret = pIsTouchWindow( hwnd, &flags );
+    ok( !ret, "IsTouchWindow succeeded\n" );
+
+    ret = pRegisterTouchWindow( hwnd, TWF_WANTPALM );
+    ok( ret, "RegisterTouchWindow failed, error %lu\n", GetLastError() );
+    flags = 0xdeadbeef;
+    ret = pIsTouchWindow( hwnd, &flags );
+    ok( ret, "IsTouchWindow failed\n" );
+    ok( flags == TWF_WANTPALM, "got flags %#lx\n", flags );
+    ret = pIsTouchWindow( hwnd, NULL );
+    ok( ret, "IsTouchWindow failed\n" );
+
+    ret = pRegisterTouchWindow( hwnd, 0 );
+    ok( ret, "RegisterTouchWindow failed, error %lu\n", GetLastError() );
+    flags = 0xdeadbeef;
+    ret = pIsTouchWindow( hwnd, &flags );
+    ok( ret, "IsTouchWindow failed\n" );
+    ok( flags == 0, "got flags %#lx\n", flags );
+
+    SetLastError( 0xdeadbeef );
+    ret = pRegisterTouchWindow( hwnd, 0x100 );
+    ok( !ret, "RegisterTouchWindow succeeded\n" );
+    ok( GetLastError() == ERROR_INVALID_PARAMETER, "got error %lu\n", GetLastError() );
+
+    ret = pUnregisterTouchWindow( hwnd );
+    ok( ret, "UnregisterTouchWindow failed, error %lu\n", GetLastError() );
+    ret = pIsTouchWindow( hwnd, &flags );
+    ok( !ret, "IsTouchWindow succeeded\n" );
+
+    SetLastError( 0xdeadbeef );
+    ret = pRegisterTouchWindow( (HWND)0xdeadbeef, 0 );
+    ok( !ret, "RegisterTouchWindow succeeded\n" );
+    ok( GetLastError() == ERROR_INVALID_WINDOW_HANDLE, "got error %lu\n", GetLastError() );
+
+    SetLastError( 0xdeadbeef );
+    ret = pCloseTouchInputHandle( (HTOUCHINPUT)0xdeadbeef );
+    ok( !ret, "CloseTouchInputHandle succeeded\n" );
+    ok( GetLastError() == ERROR_INVALID_HANDLE, "got error %lu\n", GetLastError() );
+
+    DestroyWindow( hwnd );
+}
+
 static void test_UnregisterDeviceNotification(void)
 {
     const char *not_a_devnotify = "this is a valid but garbage pointer";
@@ -6958,6 +7024,7 @@ START_TEST(input)
         win_skip( "GetPointerType is not available\n" );
 
     test_UnregisterDeviceNotification();
+    test_RegisterTouchWindow();
 
     if (!pEnableMouseInPointer)
         win_skip( "EnableMouseInPointer not found, skipping tests\n" );

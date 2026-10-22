@@ -646,8 +646,10 @@ LRESULT WINAPI DefRawInputProc( RAWINPUT **data, INT data_count, UINT header_siz
  */
 BOOL WINAPI CloseTouchInputHandle( HTOUCHINPUT handle )
 {
-    FIXME( "handle %p stub!\n", handle );
-    SetLastError( ERROR_CALL_NOT_IMPLEMENTED );
+    TRACE( "handle %p\n", handle );
+
+    /* Wine never delivers WM_TOUCH, so no touch input handle is valid */
+    SetLastError( ERROR_INVALID_HANDLE );
     return FALSE;
 }
 
@@ -661,13 +663,40 @@ BOOL WINAPI GetTouchInputInfo( HTOUCHINPUT handle, UINT count, TOUCHINPUT *ptr, 
     return FALSE;
 }
 
+/* the registration is stored as a window property; the high bit marks a registered window */
+static const WCHAR touch_flags_prop[] = L"__wine_touch_flags";
+#define TOUCH_REGISTERED 0x80000000
+
+static BOOL check_touch_window( HWND hwnd )
+{
+    DWORD pid;
+
+    if (!GetWindowThreadProcessId( hwnd, &pid ))
+    {
+        SetLastError( ERROR_INVALID_WINDOW_HANDLE );
+        return FALSE;
+    }
+    if (pid != GetCurrentProcessId())
+    {
+        SetLastError( ERROR_ACCESS_DENIED );
+        return FALSE;
+    }
+    return TRUE;
+}
+
 /**********************************************************************
  * IsTouchWindow (USER32.@)
  */
 BOOL WINAPI IsTouchWindow( HWND hwnd, ULONG *flags )
 {
-    FIXME( "hwnd %p, flags %p stub!\n", hwnd, flags );
-    return FALSE;
+    ULONG value;
+
+    TRACE( "hwnd %p, flags %p\n", hwnd, flags );
+
+    value = HandleToULong( GetPropW( hwnd, touch_flags_prop ));
+    if (!(value & TOUCH_REGISTERED)) return FALSE;
+    if (flags) *flags = value & ~TOUCH_REGISTERED;
+    return TRUE;
 }
 
 /*****************************************************************************
@@ -675,8 +704,16 @@ BOOL WINAPI IsTouchWindow( HWND hwnd, ULONG *flags )
  */
 BOOL WINAPI RegisterTouchWindow( HWND hwnd, ULONG flags )
 {
-    FIXME( "hwnd %p, flags %#lx stub!\n", hwnd, flags );
-    return TRUE;
+    TRACE( "hwnd %p, flags %#lx\n", hwnd, flags );
+
+    if (flags & ~(TWF_FINETOUCH | TWF_WANTPALM))
+    {
+        SetLastError( ERROR_INVALID_PARAMETER );
+        return FALSE;
+    }
+    if (!check_touch_window( hwnd )) return FALSE;
+
+    return SetPropW( hwnd, touch_flags_prop, ULongToHandle( flags | TOUCH_REGISTERED ));
 }
 
 /*****************************************************************************
@@ -684,17 +721,23 @@ BOOL WINAPI RegisterTouchWindow( HWND hwnd, ULONG flags )
  */
 BOOL WINAPI UnregisterTouchWindow( HWND hwnd )
 {
-    FIXME( "hwnd %p stub!\n", hwnd );
+    TRACE( "hwnd %p\n", hwnd );
+
+    if (!check_touch_window( hwnd )) return FALSE;
+
+    RemovePropW( hwnd, touch_flags_prop );
     return TRUE;
 }
 
 /*****************************************************************************
- * GetGestureInfo (USER32.@)
+ * CloseGestureInfoHandle (USER32.@)
  */
 BOOL WINAPI CloseGestureInfoHandle( HGESTUREINFO handle )
 {
-    FIXME( "handle %p stub!\n", handle );
-    SetLastError( ERROR_CALL_NOT_IMPLEMENTED );
+    TRACE( "handle %p\n", handle );
+
+    /* Wine never delivers WM_GESTURE, so no gesture info handle is valid */
+    SetLastError( ERROR_INVALID_HANDLE );
     return FALSE;
 }
 
