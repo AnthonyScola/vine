@@ -1,0 +1,58 @@
+/*
+ * advapi32 resources
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
+#pragma makedep po
+
+#include <winresrc.h>
+
+#include "advapi32_res.h"
+
+LANGUAGE LANG_ENGLISH, SUBLANG_DEFAULT
+
+STRINGTABLE
+{
+    IDS_PRIVILEGE_BASE + 2  "Create a token object"
+    IDS_PRIVILEGE_BASE + 3  "Replace a process level token"
+    IDS_PRIVILEGE_BASE + 4  "Lock pages in memory"
+    IDS_PRIVILEGE_BASE + 5  "Adjust memory quotas for a process"
+    IDS_PRIVILEGE_BASE + 6  "Add workstations to domain"
+    IDS_PRIVILEGE_BASE + 7  "Act as part of the operating system"
+    IDS_PRIVILEGE_BASE + 8  "Manage auditing and security log"
+    IDS_PRIVILEGE_BASE + 9  "Take ownership of files or other objects"
+    IDS_PRIVILEGE_BASE + 10 "Load and unload device drivers"
+    IDS_PRIVILEGE_BASE + 11 "Profile system performance"
+    IDS_PRIVILEGE_BASE + 12 "Change the system time"
+    IDS_PRIVILEGE_BASE + 13 "Profile single process"
+    IDS_PRIVILEGE_BASE + 14 "Increase scheduling priority"
+    IDS_PRIVILEGE_BASE + 15 "Create a pagefile"
+    IDS_PRIVILEGE_BASE + 16 "Create permanent shared objects"
+    IDS_PRIVILEGE_BASE + 17 "Back up files and directories"
+    IDS_PRIVILEGE_BASE + 18 "Restore files and directories"
+    IDS_PRIVILEGE_BASE + 19 "Shut down the system"
+    IDS_PRIVILEGE_BASE + 20 "Debug programs"
+    IDS_PRIVILEGE_BASE + 21 "Generate security audits"
+    IDS_PRIVILEGE_BASE + 22 "Modify firmware environment values"
+    IDS_PRIVILEGE_BASE + 23 "Bypass traverse checking"
+    IDS_PRIVILEGE_BASE + 24 "Force shutdown from a remote system"
+    IDS_PRIVILEGE_BASE + 25 "Remove computer from docking station"
+    IDS_PRIVILEGE_BASE + 26 "Synchronize directory service data"
+    IDS_PRIVILEGE_BASE + 27 "Enable computer and user accounts to be trusted for delegation"
+    IDS_PRIVILEGE_BASE + 28 "Perform volume maintenance tasks"
+    IDS_PRIVILEGE_BASE + 29 "Impersonate a client after authentication"
+    IDS_PRIVILEGE_BASE + 30 "Create global objects"
+}

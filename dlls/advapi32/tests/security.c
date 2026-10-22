@@ -648,6 +648,87 @@ struct NameToLUID
     DWORD lowPart;
 };
 
+static void test_LookupPrivilegeDisplayName(void)
+{
+    WCHAR nameW[256];
+    char nameA[256];
+    DWORD len, lang;
+    BOOL ret;
+
+    len = 0;
+    SetLastError(0xdeadbeef);
+    ret = LookupPrivilegeDisplayNameW(NULL, L"SeDebugPrivilege", NULL, &len, &lang);
+    ok(!ret, "LookupPrivilegeDisplayNameW succeeded\n");
+    ok(GetLastError() == ERROR_INSUFFICIENT_BUFFER, "got error %lu\n", GetLastError());
+    ok(len > 1, "got len %lu\n", len);
+
+    len = ARRAY_SIZE(nameW);
+    ret = LookupPrivilegeDisplayNameW(NULL, L"SeDebugPrivilege", nameW, &len, &lang);
+    ok(ret, "LookupPrivilegeDisplayNameW failed, error %lu\n", GetLastError());
+    ok(len == wcslen(nameW), "got len %lu for %s\n", len, debugstr_w(nameW));
+    ok(len > 0, "got empty name\n");
+
+    len = ARRAY_SIZE(nameA);
+    ret = LookupPrivilegeDisplayNameA(NULL, "SeShutdownPrivilege", nameA, &len, &lang);
+    ok(ret, "LookupPrivilegeDisplayNameA failed, error %lu\n", GetLastError());
+    ok(len == strlen(nameA), "got len %lu for %s\n", len, debugstr_a(nameA));
+
+    len = ARRAY_SIZE(nameW);
+    SetLastError(0xdeadbeef);
+    ret = LookupPrivilegeDisplayNameW(NULL, L"SeNoSuchPrivilege", nameW, &len, &lang);
+    ok(!ret, "LookupPrivilegeDisplayNameW succeeded\n");
+    ok(GetLastError() == ERROR_NO_SUCH_PRIVILEGE, "got error %lu\n", GetLastError());
+}
+
+static void test_LookupSecurityDescriptorParts(void)
+{
+    EXPLICIT_ACCESSW *access = NULL, *audit = NULL;
+    TRUSTEEW *owner = NULL, *group = NULL;
+    ULONG access_count = 0xdeadbeef, audit_count = 0xdeadbeef;
+    PSECURITY_DESCRIPTOR sd;
+    char sid_buf[SECURITY_MAX_SID_SIZE];
+    DWORD size, err;
+    BOOL ret;
+
+    ret = ConvertStringSecurityDescriptorToSecurityDescriptorW(L"O:BAG:SYD:(A;;GA;;;WD)", SDDL_REVISION_1, &sd, NULL);
+    ok(ret, "ConvertStringSecurityDescriptorToSecurityDescriptorW failed, error %lu\n", GetLastError());
+
+    err = LookupSecurityDescriptorPartsW(&owner, &group, &access_count, &access, &audit_count, &audit, sd);
+    ok(!err, "got error %lu\n", err);
+
+    ok(owner != NULL, "no owner\n");
+    ok(owner->TrusteeForm == TRUSTEE_IS_SID, "got form %u\n", owner->TrusteeForm);
+    size = sizeof(sid_buf);
+    CreateWellKnownSid(WinBuiltinAdministratorsSid, NULL, sid_buf, &size);
+    ok(EqualSid((PSID)owner->ptstrName, sid_buf), "wrong owner\n");
+
+    ok(group != NULL, "no group\n");
+    size = sizeof(sid_buf);
+    CreateWellKnownSid(WinLocalSystemSid, NULL, sid_buf, &size);
+    ok(EqualSid((PSID)group->ptstrName, sid_buf), "wrong group\n");
+
+    ok(access_count == 1, "got %lu access entries\n", access_count);
+    if (access_count == 1)
+    {
+        size = sizeof(sid_buf);
+        CreateWellKnownSid(WinWorldSid, NULL, sid_buf, &size);
+        ok(access[0].grfAccessMode == GRANT_ACCESS, "got mode %u\n", access[0].grfAccessMode);
+        ok(EqualSid((PSID)access[0].Trustee.ptstrName, sid_buf), "wrong trustee\n");
+    }
+    ok(audit_count == 0, "got %lu audit entries\n", audit_count);
+
+    LocalFree(owner);
+    LocalFree(group);
+    LocalFree(access);
+    LocalFree(audit);
+
+    /* everything is optional */
+    err = LookupSecurityDescriptorPartsW(NULL, NULL, NULL, NULL, NULL, NULL, sd);
+    ok(!err, "got error %lu\n", err);
+
+    LocalFree(sd);
+}
+
 static void test_lookupPrivilegeValue(void)
 {
     static const struct NameToLUID privs[] = {
@@ -8788,6 +8869,8 @@ START_TEST(security)
     test_allocateLuid();
     test_lookupPrivilegeName();
     test_lookupPrivilegeValue();
+    test_LookupPrivilegeDisplayName();
+    test_LookupSecurityDescriptorParts();
     test_CreateWellKnownSid();
     test_FileSecurity();
     test_AccessCheck();

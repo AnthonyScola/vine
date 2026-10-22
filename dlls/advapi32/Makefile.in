@@ -8,6 +8,7 @@ VER_PRODUCTVERSION = 10,0,10240,16384
 
 SOURCES = \
 	advapi.c \
+	advapi32.rc \
 	cred.c \
 	crypt.c \
 	eventlog.c \

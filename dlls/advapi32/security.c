@@ -37,6 +37,7 @@
 #include "objbase.h"
 #include "iads.h"
 #include "advapi32_misc.h"
+#include "advapi32_res.h"
 #include "lmcons.h"
 #include "userenv.h"
 
@@ -636,22 +637,104 @@ LookupPrivilegeValueA( LPCSTR lpSystemName, LPCSTR lpName, PLUID lpLuid )
     return ret;
 }
 
+/******************************************************************************
+ * LookupPrivilegeDisplayNameA			[ADVAPI32.@]
+ *
+ * See LookupPrivilegeDisplayNameW.
+ */
 BOOL WINAPI LookupPrivilegeDisplayNameA( LPCSTR lpSystemName, LPCSTR lpName, LPSTR lpDisplayName,
                                          LPDWORD cchDisplayName, LPDWORD lpLanguageId )
 {
-    FIXME("%s %s %s %p %p - stub\n", debugstr_a(lpSystemName), debugstr_a(lpName),
+    UNICODE_STRING systemW, nameW;
+    WCHAR *displayW = NULL;
+    DWORD lenW = 0, lenA;
+    BOOL ret;
+
+    TRACE("%s %s %p %p %p\n", debugstr_a(lpSystemName), debugstr_a(lpName),
           lpDisplayName, cchDisplayName, lpLanguageId);
 
-    return FALSE;
+    RtlCreateUnicodeStringFromAsciiz( &systemW, lpSystemName );
+    RtlCreateUnicodeStringFromAsciiz( &nameW, lpName );
+
+    /* query the length first */
+    ret = LookupPrivilegeDisplayNameW( systemW.Buffer, nameW.Buffer, NULL, &lenW, lpLanguageId );
+    if (!ret && GetLastError() == ERROR_INSUFFICIENT_BUFFER && (displayW = malloc( lenW * sizeof(WCHAR) )))
+    {
+        ret = LookupPrivilegeDisplayNameW( systemW.Buffer, nameW.Buffer, displayW, &lenW, lpLanguageId );
+        if (ret)
+        {
+            lenA = WideCharToMultiByte( CP_ACP, 0, displayW, -1, NULL, 0, NULL, NULL );
+            if (!lpDisplayName || *cchDisplayName < lenA)
+            {
+                *cchDisplayName = lenA;
+                SetLastError( ERROR_INSUFFICIENT_BUFFER );
+                ret = FALSE;
+            }
+            else
+            {
+                WideCharToMultiByte( CP_ACP, 0, displayW, -1, lpDisplayName, *cchDisplayName, NULL, NULL );
+                *cchDisplayName = lenA - 1;
+            }
+        }
+        free( displayW );
+    }
+    else if (!ret && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
+        SetLastError( ERROR_NOT_ENOUGH_MEMORY );
+
+    RtlFreeUnicodeString( &nameW );
+    RtlFreeUnicodeString( &systemW );
+    return ret;
 }
 
+/******************************************************************************
+ * LookupPrivilegeDisplayNameW			[ADVAPI32.@]
+ *
+ * Retrieves the description of a privilege.
+ *
+ * PARAMS
+ *  lpSystemName   [I]   Name of the system
+ *  lpName         [I]   Name of the privilege, e.g. "SeDebugPrivilege"
+ *  lpDisplayName  [O]   Destination for the description
+ *  cchDisplayName [I/O] Size of lpDisplayName in characters; on return, the
+ *                       length of the description, or the needed size
+ *  lpLanguageId   [O]   Language of the description
+ *
+ * RETURNS
+ *  Success: TRUE.
+ *  Failure: FALSE.
+ */
 BOOL WINAPI LookupPrivilegeDisplayNameW( LPCWSTR lpSystemName, LPCWSTR lpName, LPWSTR lpDisplayName,
                                          LPDWORD cchDisplayName, LPDWORD lpLanguageId )
 {
-    FIXME("%s %s %p %p %p - stub\n", debugstr_w(lpSystemName), debugstr_w(lpName),
+    const WCHAR *str;
+    LUID luid;
+    int len;
+
+    TRACE("%s %s %p %p %p\n", debugstr_w(lpSystemName), debugstr_w(lpName),
           lpDisplayName, cchDisplayName, lpLanguageId);
 
-    return FALSE;
+    if (!LookupPrivilegeValueW( lpSystemName, lpName, &luid )) return FALSE;
+
+    len = LoadStringW( GetModuleHandleW( L"advapi32.dll" ), IDS_PRIVILEGE_BASE + luid.LowPart,
+                       (WCHAR *)&str, 0 );
+    if (!len)
+    {
+        SetLastError( ERROR_NO_SUCH_PRIVILEGE );
+        return FALSE;
+    }
+
+    if (!lpDisplayName || *cchDisplayName <= len)
+    {
+        *cchDisplayName = len + 1;
+        SetLastError( ERROR_INSUFFICIENT_BUFFER );
+        return FALSE;
+    }
+
+    memcpy( lpDisplayName, str, len * sizeof(WCHAR) );
+    lpDisplayName[len] = 0;
+    *cchDisplayName = len;
+    if (lpLanguageId) *lpLanguageId = GetUserDefaultUILanguage();
+    return TRUE;
 }
 
 /******************************************************************************
@@ -2531,8 +2614,11 @@ DWORD WINAPI SetNamedSecurityInfoW(LPWSTR pObjectName,
 DWORD WINAPI GetExplicitEntriesFromAclA( PACL pacl, PULONG pcCountOfExplicitEntries,
         PEXPLICIT_ACCESSA* pListOfExplicitEntries)
 {
-    FIXME("%p %p %p\n",pacl, pcCountOfExplicitEntries, pListOfExplicitEntries);
-    return ERROR_CALL_NOT_IMPLEMENTED;
+    TRACE("%p %p %p\n", pacl, pcCountOfExplicitEntries, pListOfExplicitEntries);
+
+    /* all returned trustees are SIDs, which have the same layout in the A and W structures */
+    return GetExplicitEntriesFromAclW( pacl, pcCountOfExplicitEntries,
+                                       (EXPLICIT_ACCESSW **)pListOfExplicitEntries );
 }
 
 /******************************************************************************
@@ -3274,25 +3360,97 @@ BOOL WINAPI SaferiIsExecutableFileType(const WCHAR *path, BOOLEAN shell_execute)
 /******************************************************************************
  * LookupSecurityDescriptorPartsA   [ADVAPI32.@]
  */
-DWORD WINAPI LookupSecurityDescriptorPartsA(TRUSTEEA *owner, TRUSTEEA *group, ULONG *access_count,
-                                            EXPLICIT_ACCESSA *access_list, ULONG *audit_count,
-                                            EXPLICIT_ACCESSA *audit_list, SECURITY_DESCRIPTOR *descriptor)
+DWORD WINAPI LookupSecurityDescriptorPartsA(TRUSTEEA **owner, TRUSTEEA **group, ULONG *access_count,
+                                            EXPLICIT_ACCESSA **access_list, ULONG *audit_count,
+                                            EXPLICIT_ACCESSA **audit_list, PSECURITY_DESCRIPTOR descriptor)
 {
-    FIXME("(%p %p %p %p %p %p %p) stub\n", owner, group, access_count,
+    TRACE("(%p %p %p %p %p %p %p)\n", owner, group, access_count,
           access_list, audit_count, audit_list, descriptor);
-    return ERROR_CALL_NOT_IMPLEMENTED;
+
+    /* all returned trustees are SIDs, which have the same layout in the A and W structures */
+    return LookupSecurityDescriptorPartsW( (TRUSTEEW **)owner, (TRUSTEEW **)group, access_count,
+                                           (EXPLICIT_ACCESSW **)access_list, audit_count,
+                                           (EXPLICIT_ACCESSW **)audit_list, descriptor );
+}
+
+static DWORD sid_to_trustee( PSID sid, TRUSTEEW **ret )
+{
+    DWORD len = GetLengthSid( sid );
+    TRUSTEEW *trustee;
+
+    if (!(trustee = LocalAlloc( LMEM_FIXED, sizeof(*trustee) + len ))) return ERROR_NOT_ENOUGH_MEMORY;
+    CopySid( len, trustee + 1, sid );
+    BuildTrusteeWithSidW( trustee, trustee + 1 );
+    *ret = trustee;
+    return ERROR_SUCCESS;
+}
+
+static DWORD acl_entries( ACL *acl, BOOL present, ULONG *count, EXPLICIT_ACCESSW **list )
+{
+    if (present && acl) return GetExplicitEntriesFromAclW( acl, count, list );
+    *count = 0;
+    *list = NULL;
+    return ERROR_SUCCESS;
 }
 
 /******************************************************************************
  * LookupSecurityDescriptorPartsW   [ADVAPI32.@]
  */
-DWORD WINAPI LookupSecurityDescriptorPartsW(TRUSTEEW *owner, TRUSTEEW *group, ULONG *access_count,
-                                            EXPLICIT_ACCESSW *access_list, ULONG *audit_count,
-                                            EXPLICIT_ACCESSW *audit_list, SECURITY_DESCRIPTOR *descriptor)
+DWORD WINAPI LookupSecurityDescriptorPartsW(TRUSTEEW **owner, TRUSTEEW **group, ULONG *access_count,
+                                            EXPLICIT_ACCESSW **access_list, ULONG *audit_count,
+                                            EXPLICIT_ACCESSW **audit_list, PSECURITY_DESCRIPTOR descriptor)
 {
-    FIXME("(%p %p %p %p %p %p %p) stub\n", owner, group, access_count,
+    TRUSTEEW *owner_ret = NULL, *group_ret = NULL;
+    EXPLICIT_ACCESSW *access_ret = NULL, *audit_ret = NULL;
+    ULONG access_cnt = 0, audit_cnt = 0;
+    BOOL present, defaulted;
+    PSID sid;
+    ACL *acl;
+    DWORD err = ERROR_SUCCESS;
+
+    TRACE("(%p %p %p %p %p %p %p)\n", owner, group, access_count,
           access_list, audit_count, audit_list, descriptor);
-    return ERROR_CALL_NOT_IMPLEMENTED;
+
+    if (!descriptor || !IsValidSecurityDescriptor( descriptor )) return ERROR_INVALID_SECURITY_DESCR;
+    if (!!access_count != !!access_list || !!audit_count != !!audit_list) return ERROR_INVALID_PARAMETER;
+
+    if (owner && GetSecurityDescriptorOwner( descriptor, &sid, &defaulted ) && sid)
+        err = sid_to_trustee( sid, &owner_ret );
+    if (!err && group && GetSecurityDescriptorGroup( descriptor, &sid, &defaulted ) && sid)
+        err = sid_to_trustee( sid, &group_ret );
+    if (!err && access_list)
+    {
+        if (!GetSecurityDescriptorDacl( descriptor, &present, &acl, &defaulted )) err = GetLastError();
+        else err = acl_entries( acl, present, &access_cnt, &access_ret );
+    }
+    if (!err && audit_list)
+    {
+        if (!GetSecurityDescriptorSacl( descriptor, &present, &acl, &defaulted )) err = GetLastError();
+        else err = acl_entries( acl, present, &audit_cnt, &audit_ret );
+    }
+
+    if (err)
+    {
+        LocalFree( owner_ret );
+        LocalFree( group_ret );
+        LocalFree( access_ret );
+        LocalFree( audit_ret );
+        return err;
+    }
+
+    if (owner) *owner = owner_ret;
+    if (group) *group = group_ret;
+    if (access_list)
+    {
+        *access_count = access_cnt;
+        *access_list = access_ret;
+    }
+    if (audit_list)
+    {
+        *audit_count = audit_cnt;
+        *audit_list = audit_ret;
+    }
+    return ERROR_SUCCESS;
 }
 
 /******************************************************************************
