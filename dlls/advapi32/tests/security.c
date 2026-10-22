@@ -4664,6 +4664,57 @@ static void test_PrivateObjectSecurity(void)
 #undef CHECK_RESULT_AND_FREE
 #undef CHECK_ONE_OF_AND_FREE
 
+static void test_AddObjectAce(void)
+{
+    static const GUID type = {0x12345678,0x1234,0x1234,{1,2,3,4,5,6,7,8}};
+    char acl_buf[256], sid_buf[SECURITY_MAX_SID_SIZE];
+    ACCESS_ALLOWED_OBJECT_ACE *ace;
+    ACL *acl = (ACL *)acl_buf;
+    DWORD size = sizeof(sid_buf);
+    BOOL ret;
+
+    ret = CreateWellKnownSid(WinWorldSid, NULL, sid_buf, &size);
+    ok(ret, "CreateWellKnownSid failed, error %lu\n", GetLastError());
+
+    ret = InitializeAcl(acl, sizeof(acl_buf), ACL_REVISION_DS);
+    ok(ret, "InitializeAcl failed, error %lu\n", GetLastError());
+
+    /* with only the object type, the SID follows the first GUID */
+    ret = AddAccessAllowedObjectAce(acl, ACL_REVISION_DS, 0, GENERIC_READ, (GUID *)&type, NULL, sid_buf);
+    ok(ret, "AddAccessAllowedObjectAce failed, error %lu\n", GetLastError());
+    ok(acl->AceCount == 1, "got %u ACEs\n", acl->AceCount);
+    ret = GetAce(acl, 0, (void **)&ace);
+    ok(ret, "GetAce failed, error %lu\n", GetLastError());
+    ok(ace->Header.AceType == ACCESS_ALLOWED_OBJECT_ACE_TYPE, "got type %u\n", ace->Header.AceType);
+    ok(ace->Header.AceSize == FIELD_OFFSET(ACCESS_ALLOWED_OBJECT_ACE, InheritedObjectType) + size,
+       "got size %u\n", ace->Header.AceSize);
+    ok(ace->Mask == GENERIC_READ, "got mask %#lx\n", ace->Mask);
+    ok(ace->Flags == ACE_OBJECT_TYPE_PRESENT, "got flags %#lx\n", ace->Flags);
+    ok(IsEqualGUID(&ace->ObjectType, &type), "wrong object type\n");
+    ok(EqualSid((BYTE *)&ace->InheritedObjectType, sid_buf), "wrong SID\n");
+
+    /* without GUIDs the SID follows the flags */
+    ret = AddAccessDeniedObjectAce(acl, ACL_REVISION_DS, 0, GENERIC_WRITE, NULL, NULL, sid_buf);
+    ok(ret, "AddAccessDeniedObjectAce failed, error %lu\n", GetLastError());
+    ret = GetAce(acl, 1, (void **)&ace);
+    ok(ret, "GetAce failed, error %lu\n", GetLastError());
+    ok(ace->Header.AceType == ACCESS_DENIED_OBJECT_ACE_TYPE, "got type %u\n", ace->Header.AceType);
+    ok(ace->Header.AceSize == FIELD_OFFSET(ACCESS_ALLOWED_OBJECT_ACE, ObjectType) + size,
+       "got size %u\n", ace->Header.AceSize);
+    ok(ace->Flags == 0, "got flags %#lx\n", ace->Flags);
+    ok(EqualSid((BYTE *)&ace->ObjectType, sid_buf), "wrong SID\n");
+
+    ret = AddAuditAccessObjectAce(acl, ACL_REVISION_DS, 0, GENERIC_ALL, (GUID *)&type, (GUID *)&type,
+                                  sid_buf, TRUE, FALSE);
+    ok(ret, "AddAuditAccessObjectAce failed, error %lu\n", GetLastError());
+    ret = GetAce(acl, 2, (void **)&ace);
+    ok(ret, "GetAce failed, error %lu\n", GetLastError());
+    ok(ace->Header.AceType == SYSTEM_AUDIT_OBJECT_ACE_TYPE, "got type %u\n", ace->Header.AceType);
+    ok(ace->Header.AceFlags == SUCCESSFUL_ACCESS_ACE_FLAG, "got flags %#x\n", ace->Header.AceFlags);
+    ok(ace->Flags == (ACE_OBJECT_TYPE_PRESENT | ACE_INHERITED_OBJECT_TYPE_PRESENT), "got flags %#lx\n", ace->Flags);
+    ok(EqualSid((BYTE *)&ace->SidStart, sid_buf), "wrong SID\n");
+}
+
 static void test_SetAclInformation(void)
 {
     ACL_REVISION_INFORMATION rev;
@@ -8890,6 +8941,7 @@ START_TEST(security)
     test_PrivateObjectSecurity();
     test_InitializeAcl();
     test_SetAclInformation();
+    test_AddObjectAce();
     test_GetWindowsAccountDomainSid();
     test_EqualDomainSid();
     test_GetSecurityInfo();

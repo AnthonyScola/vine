@@ -150,6 +150,72 @@ static NTSTATUS add_access_ace(PACL pAcl, DWORD dwAceRevision, DWORD dwAceFlags,
     return STATUS_SUCCESS;
 }
 
+/* adds an object ACE: the GUIDs are only stored when present, and shift the SID */
+static NTSTATUS add_object_ace(PACL acl, DWORD revision, DWORD flags, DWORD mask, GUID *type,
+                               GUID *inherited_type, PSID sid, DWORD ace_type)
+{
+    ACE_HEADER *header;
+    DWORD sid_len, size, *ptr;
+    DWORD object_flags = 0;
+    BYTE *data;
+
+    if (!RtlValidSid(sid))
+        return STATUS_INVALID_SID;
+
+    if (acl->AclRevision > MAX_ACL_REVISION || revision > MAX_ACL_REVISION)
+        return STATUS_REVISION_MISMATCH;
+
+    if (!RtlValidAcl(acl))
+        return STATUS_INVALID_ACL;
+
+    if (!RtlFirstFreeAce(acl, &header))
+        return STATUS_INVALID_ACL;
+
+    if (!header)
+        return STATUS_ALLOTTED_SPACE_EXCEEDED;
+
+    sid_len = RtlLengthSid(sid);
+    size = sizeof(ACE_HEADER) + 2 * sizeof(DWORD) + sid_len;
+    if (type)
+    {
+        object_flags |= ACE_OBJECT_TYPE_PRESENT;
+        size += sizeof(GUID);
+    }
+    if (inherited_type)
+    {
+        object_flags |= ACE_INHERITED_OBJECT_TYPE_PRESENT;
+        size += sizeof(GUID);
+    }
+    if ((char *)header + size > (char *)acl + acl->AclSize)
+        return STATUS_ALLOTTED_SPACE_EXCEEDED;
+
+    header->AceType = ace_type;
+    header->AceFlags = flags;
+    header->AceSize = size;
+
+    ptr = (DWORD *)(header + 1);
+    ptr[0] = mask;
+    ptr[1] = object_flags;
+    data = (BYTE *)(ptr + 2);
+    if (type)
+    {
+        memcpy(data, type, sizeof(GUID));
+        data += sizeof(GUID);
+    }
+    if (inherited_type)
+    {
+        memcpy(data, inherited_type, sizeof(GUID));
+        data += sizeof(GUID);
+    }
+    RtlCopySid(sid_len, data, sid);
+
+    /* object ACEs only exist in ACL_REVISION_DS ACLs */
+    acl->AclRevision = max(acl->AclRevision, max(revision, ACL_REVISION_DS));
+    acl->AceCount++;
+
+    return STATUS_SUCCESS;
+}
+
 /*
  *	SID FUNCTIONS
  */
@@ -1386,9 +1452,11 @@ NTSTATUS WINAPI RtlAddAccessAllowedObjectAce(
     IN GUID* pInheritedObjectTypeGuid,
     IN PSID pSid)
 {
-    FIXME("%p %lx %lx %lx %p %p %p - stub\n", pAcl, dwAceRevision, dwAceFlags, dwAccessMask,
+    TRACE("%p %lx %lx %lx %p %p %p\n", pAcl, dwAceRevision, dwAceFlags, dwAccessMask,
           pObjectTypeGuid, pInheritedObjectTypeGuid, pSid);
-    return STATUS_NOT_IMPLEMENTED;
+
+    return add_object_ace(pAcl, dwAceRevision, dwAceFlags, dwAccessMask, pObjectTypeGuid,
+                          pInheritedObjectTypeGuid, pSid, ACCESS_ALLOWED_OBJECT_ACE_TYPE);
 }
 
 /******************************************************************************
@@ -1431,9 +1499,11 @@ NTSTATUS WINAPI RtlAddAccessDeniedObjectAce(
     IN GUID* pInheritedObjectTypeGuid,
     IN PSID pSid)
 {
-    FIXME("%p %lx %lx %lx %p %p %p - stub\n", pAcl, dwAceRevision, dwAceFlags, dwAccessMask,
+    TRACE("%p %lx %lx %lx %p %p %p\n", pAcl, dwAceRevision, dwAceFlags, dwAccessMask,
           pObjectTypeGuid, pInheritedObjectTypeGuid, pSid);
-    return STATUS_NOT_IMPLEMENTED;
+
+    return add_object_ace(pAcl, dwAceRevision, dwAceFlags, dwAccessMask, pObjectTypeGuid,
+                          pInheritedObjectTypeGuid, pSid, ACCESS_DENIED_OBJECT_ACE_TYPE);
 }
 
 /************************************************************************** 
@@ -1489,9 +1559,17 @@ NTSTATUS WINAPI RtlAddAuditAccessObjectAce(
     IN BOOL bAuditSuccess,
     IN BOOL bAuditFailure)
 {
-    FIXME("%p %lx %lx %lx %p %p %p %d %d - stub\n", pAcl, dwAceRevision, dwAceFlags, dwAccessMask,
+    TRACE("%p %lx %lx %lx %p %p %p %d %d\n", pAcl, dwAceRevision, dwAceFlags, dwAccessMask,
           pObjectTypeGuid, pInheritedObjectTypeGuid, pSid, bAuditSuccess, bAuditFailure);
-    return STATUS_NOT_IMPLEMENTED;
+
+    if (bAuditSuccess)
+        dwAceFlags |= SUCCESSFUL_ACCESS_ACE_FLAG;
+
+    if (bAuditFailure)
+        dwAceFlags |= FAILED_ACCESS_ACE_FLAG;
+
+    return add_object_ace(pAcl, dwAceRevision, dwAceFlags, dwAccessMask, pObjectTypeGuid,
+                          pInheritedObjectTypeGuid, pSid, SYSTEM_AUDIT_OBJECT_ACE_TYPE);
 }
 
 /**************************************************************************
