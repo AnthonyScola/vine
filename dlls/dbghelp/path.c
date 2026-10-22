@@ -101,9 +101,30 @@ HANDLE WINAPI FindDebugInfoFileEx(PCSTR FileName, PCSTR SymbolPath,
                                   PFIND_DEBUG_FILE_CALLBACK Callback,
                                   PVOID CallerData)
 {
-    FIXME("(%s %s %s %p %p): stub\n", debugstr_a(FileName), debugstr_a(SymbolPath),
-            debugstr_a(DebugFilePath), Callback, CallerData);
-    return NULL;
+    HANDLE      h;
+
+    TRACE("(%s %s %p %p %p)\n", debugstr_a(FileName), debugstr_a(SymbolPath),
+          DebugFilePath, Callback, CallerData);
+
+    h = CreateFileA(FileName, GENERIC_READ, FILE_SHARE_READ, NULL,
+                    OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (h != INVALID_HANDLE_VALUE)
+        lstrcpynA(DebugFilePath, FileName, MAX_PATH);
+    else
+    {
+        if (!SearchPathA(SymbolPath, file_nameA(FileName), NULL, MAX_PATH, DebugFilePath, NULL))
+            return NULL;
+        h = CreateFileA(DebugFilePath, GENERIC_READ, FILE_SHARE_READ, NULL,
+                        OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (h == INVALID_HANDLE_VALUE) return NULL;
+    }
+    /* let the caller validate the candidate */
+    if (Callback && !Callback(h, DebugFilePath, CallerData))
+    {
+        CloseHandle(h);
+        return NULL;
+    }
+    return h;
 }
 
 /******************************************************************
