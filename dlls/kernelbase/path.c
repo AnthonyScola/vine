@@ -5250,6 +5250,8 @@ HRESULT WINAPI UrlHashW(const WCHAR *url, unsigned char *dest, DWORD dest_len)
 
 BOOL WINAPI IsInternetESCEnabled(void)
 {
-    FIXME(": stub\n");
+    TRACE("\n");
+
+    /* Enhanced Security Configuration only exists on Windows Server */
     return FALSE;
 }

@@ -4228,6 +4228,34 @@ static void test_GetNumaProcessorNode(void)
     }
 }
 
+static void test_GetProcessGroupAffinity(void)
+{
+    BOOL (WINAPI *pGetProcessGroupAffinity)(HANDLE, USHORT *, USHORT *);
+    USHORT count, groups[4];
+    BOOL ret;
+
+    pGetProcessGroupAffinity = (void *)GetProcAddress(GetModuleHandleA("kernel32.dll"), "GetProcessGroupAffinity");
+    if (!pGetProcessGroupAffinity)
+    {
+        win_skip("GetProcessGroupAffinity is missing\n");
+        return;
+    }
+
+    count = 0;
+    SetLastError(0xdeadbeef);
+    ret = pGetProcessGroupAffinity(GetCurrentProcess(), &count, groups);
+    ok(!ret, "GetProcessGroupAffinity succeeded\n");
+    ok(GetLastError() == ERROR_INSUFFICIENT_BUFFER, "got error %lu\n", GetLastError());
+    ok(count >= 1, "got count %u\n", count);
+
+    count = ARRAY_SIZE(groups);
+    memset(groups, 0xcc, sizeof(groups));
+    ret = pGetProcessGroupAffinity(GetCurrentProcess(), &count, groups);
+    ok(ret, "GetProcessGroupAffinity failed, error %lu\n", GetLastError());
+    ok(count >= 1 && count <= ARRAY_SIZE(groups), "got count %u\n", count);
+    ok(groups[0] == 0 || count > 1, "got group %u\n", groups[0]);
+}
+
 static void test_session_info(void)
 {
     DWORD session_id, active_session;
@@ -5827,6 +5855,7 @@ START_TEST(process)
     test_DuplicateHandle();
     test_StdHandleInheritance();
     test_GetNumaProcessorNode();
+    test_GetProcessGroupAffinity();
     test_session_info();
     test_GetLogicalProcessorInformationEx();
     test_GetSystemCpuSetInformation();

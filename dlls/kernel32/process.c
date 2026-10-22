@@ -784,9 +784,9 @@ BOOL WINAPI GetNumaNodeProcessorMask( UCHAR node, ULONGLONG *mask )
  */
 BOOL WINAPI GetNumaAvailableMemoryNode(UCHAR node, PULONGLONG available_bytes)
 {
-    FIXME("(%c %p): stub\n", node, available_bytes);
-    SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
-    return FALSE;
+    TRACE("(%u %p)\n", node, available_bytes);
+
+    return GetNumaAvailableMemoryNodeEx(node, available_bytes);
 }
 
 /**********************************************************************
@@ -794,9 +794,25 @@ BOOL WINAPI GetNumaAvailableMemoryNode(UCHAR node, PULONGLONG available_bytes)
  */
 BOOL WINAPI GetNumaAvailableMemoryNodeEx(USHORT node, PULONGLONG available_bytes)
 {
-    FIXME("(%hu %p): stub\n", node, available_bytes);
-    SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
-    return FALSE;
+    MEMORYSTATUSEX status;
+    ULONG highest;
+
+    TRACE("(%hu %p)\n", node, available_bytes);
+
+    if (!GetNumaHighestNodeNumber(&highest)) return FALSE;
+    if (node > highest)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+
+    status.dwLength = sizeof(status);
+    if (!GlobalMemoryStatusEx(&status)) return FALSE;
+
+    /* memory isn't tracked per node, so report what the whole system has */
+    if (highest) FIXME("reporting system-wide memory for node %hu\n", node);
+    *available_bytes = status.ullAvailPhys;
+    return TRUE;
 }
 
 /***********************************************************************
@@ -853,10 +869,13 @@ not_found:
  */
 BOOL WINAPI GetNumaProximityNode( ULONG proximity_id, UCHAR *node_number )
 {
-    FIXME( "proximity_id %lu, node_number %p stub.\n", proximity_id, node_number );
+    USHORT node;
 
-    SetLastError( ERROR_CALL_NOT_IMPLEMENTED );
-    return FALSE;
+    TRACE( "proximity_id %lu, node_number %p.\n", proximity_id, node_number );
+
+    if (!GetNumaProximityNodeEx( proximity_id, &node )) return FALSE;
+    *node_number = node;
+    return TRUE;
 }
 
 /**********************************************************************

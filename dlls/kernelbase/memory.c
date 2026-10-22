@@ -254,9 +254,17 @@ void WINAPI DECLSPEC_HOTPATCH GetSystemInfo( SYSTEM_INFO *si )
  */
 BOOL WINAPI DECLSPEC_HOTPATCH GetSystemFileCacheSize( SIZE_T *mincache, SIZE_T *maxcache, DWORD *flags )
 {
-    FIXME( "stub: %p %p %p\n", mincache, maxcache, flags );
-    SetLastError( ERROR_CALL_NOT_IMPLEMENTED );
-    return FALSE;
+    SYSTEM_CACHE_INFORMATION info;
+
+    TRACE( "%p %p %p\n", mincache, maxcache, flags );
+
+    if (!set_ntstatus( NtQuerySystemInformation( SystemFileCacheInformation, &info, sizeof(info), NULL )))
+        return FALSE;
+
+    *mincache = info.MinimumWorkingSet * (page_mask + 1);
+    *maxcache = info.MaximumWorkingSet * (page_mask + 1);
+    *flags = 0;  /* no hard limits */
+    return TRUE;
 }
 
 
@@ -1614,10 +1622,20 @@ BOOL WINAPI DECLSPEC_HOTPATCH GetNumaNodeProcessorMaskEx( USHORT node, GROUP_AFF
  */
 BOOL WINAPI DECLSPEC_HOTPATCH GetNumaProximityNodeEx( ULONG proximity_id, USHORT *node )
 {
-    FIXME( "proximity_id %lu, node %p stub.\n", proximity_id, node );
+    ULONG highest;
 
-    SetLastError( ERROR_CALL_NOT_IMPLEMENTED );
-    return FALSE;
+    TRACE( "proximity_id %lu, node %p.\n", proximity_id, node );
+
+    if (!GetNumaHighestNodeNumber( &highest )) return FALSE;
+
+    /* Wine doesn't read the firmware's proximity domains; they are numbered like the nodes */
+    if (proximity_id > highest)
+    {
+        SetLastError( ERROR_INVALID_PARAMETER );
+        return FALSE;
+    }
+    *node = proximity_id;
+    return TRUE;
 }
 
 

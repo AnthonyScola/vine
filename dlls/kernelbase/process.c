@@ -888,9 +888,23 @@ DWORD WINAPI DECLSPEC_HOTPATCH GetPriorityClass( HANDLE process )
  */
 BOOL WINAPI DECLSPEC_HOTPATCH GetProcessGroupAffinity( HANDLE process, USHORT *count, USHORT *array )
 {
-    FIXME( "(%p,%p,%p): stub\n", process, count, array );
-    SetLastError( ERROR_CALL_NOT_IMPLEMENTED );
-    return FALSE;
+    PROCESS_BASIC_INFORMATION pbi;
+
+    TRACE( "(%p,%p,%p)\n", process, count, array );
+
+    if (!set_ntstatus( NtQueryInformationProcess( process, ProcessBasicInformation, &pbi, sizeof(pbi), NULL )))
+        return FALSE;
+
+    /* Wine runs all processors in group 0 */
+    if (*count < 1)
+    {
+        *count = 1;
+        SetLastError( ERROR_INSUFFICIENT_BUFFER );
+        return FALSE;
+    }
+    *count = 1;
+    array[0] = 0;
+    return TRUE;
 }
 
 
