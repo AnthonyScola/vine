@@ -24,6 +24,8 @@
 #include "windef.h"
 #include "winbase.h"
 #include "winerror.h"
+#include "wingdi.h"
+#include "winspool.h"
 #include "wine/test.h"
 
 
@@ -204,9 +206,62 @@ static void test_SplInitializeWinSpoolDrv(VOID)
 
 /* ########################### */
 
+static void test_winspool_forwards(void)
+{
+    typedef BOOL (WINAPI *enum_printers_t)(DWORD, LPWSTR, DWORD, LPBYTE, DWORD, LPDWORD, LPDWORD);
+    typedef BOOL (WINAPI *enum_procs_t)(LPWSTR, LPWSTR, DWORD, LPBYTE, DWORD, LPDWORD, LPDWORD);
+    enum_printers_t spl_EnumPrintersW, ws_EnumPrintersW;
+    enum_procs_t spl_EnumPrintProcessorsW, ws_EnumPrintProcessorsW;
+    DWORD needed, needed_ws, count, count_ws;
+    HMODULE spl, ws;
+    BOOL ret, ret_ws;
+
+    spl = LoadLibraryA("spoolss.dll");
+    ws = LoadLibraryA("winspool.drv");
+    if (!spl || !ws)
+    {
+        win_skip("spoolss.dll or winspool.drv not available\n");
+        return;
+    }
+
+    spl_EnumPrintersW = (enum_printers_t)GetProcAddress(spl, "EnumPrintersW");
+    ws_EnumPrintersW = (enum_printers_t)GetProcAddress(ws, "EnumPrintersW");
+    spl_EnumPrintProcessorsW = (enum_procs_t)GetProcAddress(spl, "EnumPrintProcessorsW");
+    ws_EnumPrintProcessorsW = (enum_procs_t)GetProcAddress(ws, "EnumPrintProcessorsW");
+    ok(spl_EnumPrintersW != NULL, "EnumPrintersW not exported\n");
+    ok(spl_EnumPrintProcessorsW != NULL, "EnumPrintProcessorsW not exported\n");
+    ok(GetProcAddress(spl, "OpenPrinterW") != NULL, "OpenPrinterW not exported\n");
+    ok(GetProcAddress(spl, "ClosePrinter") != NULL, "ClosePrinter not exported\n");
+    if (!spl_EnumPrintersW || !spl_EnumPrintProcessorsW) goto done;
+
+    /* the spoolss entry points report the same data as winspool.drv */
+    needed = count = needed_ws = count_ws = 0xdeadbeef;
+    ret = spl_EnumPrintersW(PRINTER_ENUM_LOCAL, NULL, 1, NULL, 0, &needed, &count);
+    ret_ws = ws_EnumPrintersW(PRINTER_ENUM_LOCAL, NULL, 1, NULL, 0, &needed_ws, &count_ws);
+    ok(ret == ret_ws || broken(!ret) /* router not usable outside the spooler */,
+       "got %d, expected %d\n", ret, ret_ws);
+    if (ret == ret_ws)
+        ok(needed == needed_ws, "got needed %lu, expected %lu\n", needed, needed_ws);
+
+    needed = count = needed_ws = count_ws = 0xdeadbeef;
+    ret = spl_EnumPrintProcessorsW(NULL, NULL, 1, NULL, 0, &needed, &count);
+    ret_ws = ws_EnumPrintProcessorsW(NULL, NULL, 1, NULL, 0, &needed_ws, &count_ws);
+    ok(ret == ret_ws || broken(!ret), "got %d, expected %d\n", ret, ret_ws);
+    if (ret == ret_ws)
+        ok(needed == needed_ws, "got needed %lu, expected %lu\n", needed, needed_ws);
+
+done:
+    FreeLibrary(ws);
+    FreeLibrary(spl);
+}
+
+/* ########################### */
+
 START_TEST(spoolss)
 {
     LPCSTR ptr;
+
+    test_winspool_forwards();
 
     /* The tests fail on Win7 (see comments in load_functions() */
     ptr = load_functions();
