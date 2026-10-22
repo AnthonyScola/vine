@@ -2600,20 +2600,15 @@ static HRESULT create_stream(const WCHAR *filename, IStream **stream)
     return hr;
 }
 
-/***********************************************************************
- * OleLoadPictureFile (OLEAUT32.422)
- */
-HRESULT WINAPI OleLoadPictureFile(VARIANT filename, IDispatch **picture)
+static HRESULT load_picture_file(VARIANT *filename, BOOL ex, DWORD x, DWORD y, DWORD flags, IDispatch **picture)
 {
     IStream *stream;
     HRESULT hr;
 
-    TRACE("(%s,%p)\n", wine_dbgstr_variant(&filename), picture);
-
-    if (V_VT(&filename) != VT_BSTR)
+    if (V_VT(filename) != VT_BSTR)
         return CTL_E_FILENOTFOUND;
 
-    hr = create_stream(V_BSTR(&filename), &stream);
+    hr = create_stream(V_BSTR(filename), &stream);
     if (hr != S_OK)
     {
         if (hr == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
@@ -2622,9 +2617,32 @@ HRESULT WINAPI OleLoadPictureFile(VARIANT filename, IDispatch **picture)
         return CTL_E_PATHFILEACCESSERROR;
     }
 
-    hr = OleLoadPicture(stream, 0, FALSE, &IID_IDispatch, (void **)picture);
+    if (ex)
+        hr = OleLoadPictureEx(stream, 0, FALSE, &IID_IDispatch, x, y, flags, (void **)picture);
+    else
+        hr = OleLoadPicture(stream, 0, FALSE, &IID_IDispatch, (void **)picture);
     IStream_Release(stream);
     return hr;
+}
+
+/***********************************************************************
+ * OleLoadPictureFile (OLEAUT32.422)
+ */
+HRESULT WINAPI OleLoadPictureFile(VARIANT filename, IDispatch **picture)
+{
+    TRACE("(%s,%p)\n", wine_dbgstr_variant(&filename), picture);
+
+    return load_picture_file(&filename, FALSE, 0, 0, 0, picture);
+}
+
+/***********************************************************************
+ * OleLoadPictureFileEx (OLEAUT32.402)
+ */
+HRESULT WINAPI OleLoadPictureFileEx(VARIANT filename, DWORD x, DWORD y, DWORD flags, IDispatch **picture)
+{
+    TRACE("(%s,%lu,%lu,%#lx,%p)\n", wine_dbgstr_variant(&filename), x, y, flags, picture);
+
+    return load_picture_file(&filename, TRUE, x, y, flags, picture);
 }
 
 /***********************************************************************
