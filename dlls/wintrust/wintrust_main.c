@@ -1126,6 +1126,21 @@ BOOL WINAPI OpenPersonalTrustDBDialog(HWND hwnd)
 }
 
 /***********************************************************************
+ *		OpenPersonalTrustDBDialogEx (WINTRUST.@)
+ */
+BOOL WINAPI OpenPersonalTrustDBDialogEx(HWND hwnd, DWORD flags, void **reserved)
+{
+    TRACE("(%p, %#lx, %p)\n", hwnd, flags, reserved);
+
+    if (flags & ~(WT_TRUSTDBDIALOG_NO_UI_FLAG | WT_TRUSTDBDIALOG_ONLY_PUB_TAB_FLAG |
+                  WT_TRUSTDBDIALOG_WRITE_LEGACY_REG_FLAG | WT_TRUSTDBDIALOG_WRITE_IEAK_STORE_FLAG))
+        FIXME("unknown flags %#lx\n", flags);
+    /* the dialog only shows the publisher tab; there's no legacy or IEAK store to write */
+    if (flags & WT_TRUSTDBDIALOG_NO_UI_FLAG) return TRUE;
+    return OpenPersonalTrustDBDialog(hwnd);
+}
+
+/***********************************************************************
  *		WTHelperCertCheckValidSignature
  */
 HRESULT WINAPI WTHelperCertCheckValidSignature(CRYPT_PROVIDER_DATA *pProvData)

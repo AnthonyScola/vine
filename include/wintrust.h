@@ -458,6 +458,11 @@ static const WCHAR WT_PROVIDER_CERTTRUST_FUNCTION[] =
     {'W','i','n','t','r','u','s','t','C','e','r','t','i','f','i','c','a','t','e','T','r','u','s','t', 0};
 #endif
 
+#define WT_TRUSTDBDIALOG_NO_UI_FLAG            0x00000001
+#define WT_TRUSTDBDIALOG_ONLY_PUB_TAB_FLAG     0x00000002
+#define WT_TRUSTDBDIALOG_WRITE_LEGACY_REG_FLAG 0x00000100
+#define WT_TRUSTDBDIALOG_WRITE_IEAK_STORE_FLAG 0x00000200
+
 BOOL      WINAPI WintrustAddActionID(GUID*,DWORD,CRYPT_REGISTER_ACTIONID*);
 BOOL      WINAPI WintrustRemoveActionID(GUID*);
 BOOL      WINAPI WintrustLoadFunctionPointers(GUID*,CRYPT_PROVIDER_FUNCTIONS*);
@@ -465,6 +470,8 @@ BOOL      WINAPI WintrustAddDefaultForUsage(const char*,CRYPT_PROVIDER_REGDEFUSA
 void      WINAPI WintrustGetRegPolicyFlags(DWORD*);
 BOOL      WINAPI WintrustSetRegPolicyFlags(DWORD);
 LONG      WINAPI WinVerifyTrust(HWND,GUID*,LPVOID);
+BOOL      WINAPI OpenPersonalTrustDBDialog(HWND);
+BOOL      WINAPI OpenPersonalTrustDBDialogEx(HWND,DWORD,PVOID*);
 HRESULT   WINAPI WinVerifyTrustEx(HWND,GUID*,WINTRUST_DATA*);
 
 CRYPT_PROVIDER_CERT * WINAPI WTHelperGetProvCertFromChain(
