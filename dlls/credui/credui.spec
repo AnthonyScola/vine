@@ -1,12 +1,12 @@
 @ stdcall CredPackAuthenticationBufferW(long wstr ptr ptr ptr)
 @ stub CredUICmdLinePromptForCredentialsA
 @ stub CredUICmdLinePromptForCredentialsW
-@ stub CredUIConfirmCredentialsA
+@ stdcall CredUIConfirmCredentialsA(str long)
 @ stdcall CredUIConfirmCredentialsW(wstr long)
 @ stdcall CredUIInitControls()
-@ stub CredUIParseUserNameA
+@ stdcall CredUIParseUserNameA(str ptr long ptr long)
 @ stdcall CredUIParseUserNameW(wstr ptr long ptr long)
-@ stub CredUIPromptForCredentialsA
+@ stdcall CredUIPromptForCredentialsA(ptr str ptr long ptr long ptr long ptr long)
 @ stdcall CredUIPromptForCredentialsW(ptr wstr ptr long ptr long ptr long ptr long)
 @ stdcall CredUIPromptForWindowsCredentialsW(ptr long ptr ptr long ptr ptr ptr long)
 @ stdcall CredUIReadSSOCredA(str ptr)

@@ -19,6 +19,7 @@
  */
 
 #include <stdarg.h>
+#include <stdlib.h>
 
 #include "windef.h"
 #include "winbase.h"
@@ -801,6 +802,140 @@ DWORD WINAPI CredUIParseUserNameW(PCWSTR pszUserName, PWSTR pszUser,
     pszDomain[0] = '\0';
 
     return ERROR_SUCCESS;
+}
+
+static WCHAR *strdupAtoW( const char *str )
+{
+    WCHAR *ret;
+    int len;
+
+    if (!str) return NULL;
+    len = MultiByteToWideChar( CP_ACP, 0, str, -1, NULL, 0 );
+    if ((ret = malloc( len * sizeof(WCHAR) ))) MultiByteToWideChar( CP_ACP, 0, str, -1, ret, len );
+    return ret;
+}
+
+/* allocates a W buffer of max_chars characters, initialised from the A string */
+static WCHAR *alloc_bufferAtoW( const char *str, ULONG max_chars )
+{
+    WCHAR *ret;
+
+    if (!str || !max_chars) return NULL;
+    if (!(ret = calloc( max_chars, sizeof(WCHAR) ))) return NULL;
+    MultiByteToWideChar( CP_ACP, 0, str, -1, ret, max_chars );
+    ret[max_chars - 1] = 0;
+    return ret;
+}
+
+static BOOL copy_bufferWtoA( const WCHAR *strW, char *str, ULONG max_chars )
+{
+    if (!strW || !str || !max_chars) return TRUE;
+    return WideCharToMultiByte( CP_ACP, 0, strW, -1, str, max_chars, NULL, NULL ) != 0;
+}
+
+static void free_secret( WCHAR *str, ULONG max_chars )
+{
+    if (!str) return;
+    SecureZeroMemory( str, max_chars * sizeof(WCHAR) );
+    free( str );
+}
+
+/******************************************************************************
+ *           CredUIPromptForCredentialsA [CREDUI.@]
+ */
+DWORD WINAPI CredUIPromptForCredentialsA(PCREDUI_INFOA pUIInfo, PCSTR pszTargetName, PCtxtHandle Reserved,
+                                         DWORD dwAuthError, PSTR pszUsername, ULONG ulUsernameMaxChars,
+                                         PSTR pszPassword, ULONG ulPasswordMaxChars, PBOOL pfSave,
+                                         DWORD dwFlags)
+{
+    WCHAR *targetW = NULL, *userW = NULL, *passwordW = NULL, *messageW = NULL, *captionW = NULL;
+    CREDUI_INFOW infoW, *pinfoW = NULL;
+    DWORD ret = ERROR_NOT_ENOUGH_MEMORY;
+
+    TRACE("(%p, %s, %p, %ld, %s, %ld, %p, %ld, %p, 0x%08lx)\n", pUIInfo, debugstr_a(pszTargetName),
+          Reserved, dwAuthError, debugstr_a(pszUsername), ulUsernameMaxChars, pszPassword,
+          ulPasswordMaxChars, pfSave, dwFlags);
+
+    if (pszTargetName && !(targetW = strdupAtoW( pszTargetName ))) goto done;
+    if (pszUsername && ulUsernameMaxChars && !(userW = alloc_bufferAtoW( pszUsername, ulUsernameMaxChars )))
+        goto done;
+    if (pszPassword && ulPasswordMaxChars && !(passwordW = alloc_bufferAtoW( pszPassword, ulPasswordMaxChars )))
+        goto done;
+    if (pUIInfo)
+    {
+        infoW.cbSize = sizeof(infoW);
+        infoW.hwndParent = pUIInfo->hwndParent;
+        infoW.pszMessageText = messageW = strdupAtoW( pUIInfo->pszMessageText );
+        infoW.pszCaptionText = captionW = strdupAtoW( pUIInfo->pszCaptionText );
+        infoW.hbmBanner = pUIInfo->hbmBanner;
+        pinfoW = &infoW;
+    }
+
+    ret = CredUIPromptForCredentialsW( pinfoW, targetW, Reserved, dwAuthError, userW, ulUsernameMaxChars,
+                                       passwordW, ulPasswordMaxChars, pfSave, dwFlags );
+    if (ret == ERROR_SUCCESS)
+    {
+        if (!copy_bufferWtoA( userW, pszUsername, ulUsernameMaxChars ) ||
+            !copy_bufferWtoA( passwordW, pszPassword, ulPasswordMaxChars ))
+            ret = ERROR_INSUFFICIENT_BUFFER;
+    }
+
+done:
+    free( captionW );
+    free( messageW );
+    free_secret( passwordW, ulPasswordMaxChars );
+    free( userW );
+    free( targetW );
+    return ret;
+}
+
+/******************************************************************************
+ *           CredUIConfirmCredentialsA [CREDUI.@]
+ */
+DWORD WINAPI CredUIConfirmCredentialsA(PCSTR pszTargetName, BOOL bConfirm)
+{
+    WCHAR *targetW = NULL;
+    DWORD ret;
+
+    TRACE("(%s, %s)\n", debugstr_a(pszTargetName), bConfirm ? "TRUE" : "FALSE");
+
+    if (pszTargetName && !(targetW = strdupAtoW( pszTargetName ))) return ERROR_NOT_ENOUGH_MEMORY;
+    ret = CredUIConfirmCredentialsW( targetW, bConfirm );
+    free( targetW );
+    return ret;
+}
+
+/******************************************************************************
+ *           CredUIParseUserNameA [CREDUI.@]
+ */
+DWORD WINAPI CredUIParseUserNameA(PCSTR pszUserName, PSTR pszUser, ULONG ulMaxUserChars,
+                                  PSTR pszDomain, ULONG ulMaxDomainChars)
+{
+    WCHAR *nameW = NULL, *userW = NULL, *domainW = NULL;
+    DWORD ret;
+
+    TRACE("(%s, %p, %ld, %p, %ld)\n", debugstr_a(pszUserName), pszUser, ulMaxUserChars, pszDomain,
+          ulMaxDomainChars);
+
+    if (!pszUserName || !pszUser || !ulMaxUserChars || !pszDomain || !ulMaxDomainChars)
+        return ERROR_INVALID_PARAMETER;
+
+    ret = ERROR_NOT_ENOUGH_MEMORY;
+    if (!(nameW = strdupAtoW( pszUserName ))) goto done;
+    if (!(userW = calloc( ulMaxUserChars, sizeof(WCHAR) ))) goto done;
+    if (!(domainW = calloc( ulMaxDomainChars, sizeof(WCHAR) ))) goto done;
+
+    ret = CredUIParseUserNameW( nameW, userW, ulMaxUserChars, domainW, ulMaxDomainChars );
+    if (ret == ERROR_SUCCESS &&
+        (!copy_bufferWtoA( userW, pszUser, ulMaxUserChars ) ||
+         !copy_bufferWtoA( domainW, pszDomain, ulMaxDomainChars )))
+        ret = ERROR_INSUFFICIENT_BUFFER;
+
+done:
+    free( domainW );
+    free( userW );
+    free( nameW );
+    return ret;
 }
 
 /******************************************************************************
