@@ -1256,10 +1256,14 @@ RPC_STATUS WINAPI RpcServerUnregisterIf( RPC_IF_HANDLE IfSpec, UUID* MgrTypeUuid
  */
 RPC_STATUS WINAPI RpcServerUnregisterIfEx( RPC_IF_HANDLE IfSpec, UUID* MgrTypeUuid, int RundownContextHandles )
 {
-  FIXME("(IfSpec == (RPC_IF_HANDLE)^%p, MgrTypeUuid == %s, RundownContextHandles == %d): stub\n",
+  TRACE("(IfSpec == (RPC_IF_HANDLE)^%p, MgrTypeUuid == %s, RundownContextHandles == %d)\n",
     IfSpec, debugstr_guid(MgrTypeUuid), RundownContextHandles);
 
-  return RPC_S_OK;
+  if (RundownContextHandles)
+    FIXME("context handle rundown not supported\n");
+
+  /* unlike RpcServerUnregisterIf, this never waits for outstanding calls */
+  return RpcServerUnregisterIf(IfSpec, MgrTypeUuid, FALSE);
 }
 
 /***********************************************************************
